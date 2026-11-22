@@ -1,0 +1,10 @@
+<resources>
+    <string name="app_name">غِراس</string>
+    <string name="app_slogan">غرسٌ طيب في الدنيا وأجرٌ دائم في الآخرة</string>
+    <string name="nav_home">الرئيسية</string>
+    <string name="nav_quran">المصحف</string>
+    <string name="nav_azkar">الأذكار</string>
+    <string name="nav_night">وضع الليل</string>
+    <string name="nav_contest">المسابقة</string>
+    <string name="nav_profile">الإعدادات</string>
+</resources>
