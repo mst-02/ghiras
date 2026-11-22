@@ -244,27 +244,37 @@ private fun NavTabItem(
     isSelected: Boolean,
     onClick: () -> Unit
 ) {
-    Column(
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center,
+    Surface(
+        shape = RoundedCornerShape(16.dp),
+        color = if (isSelected) {
+            GoldChampagne.copy(alpha = 0.18f)
+        } else {
+            Color.Transparent
+        },
+        border = if (isSelected) androidx.compose.foundation.BorderStroke(1.5.dp, GoldBright.copy(alpha = 0.8f)) else null,
         modifier = Modifier
-            .clip(RoundedCornerShape(12.dp))
+            .clip(RoundedCornerShape(16.dp))
             .clickable { onClick() }
-            .padding(horizontal = 16.dp, vertical = 6.dp)
     ) {
-        Icon(
-            imageVector = icon,
-            contentDescription = label,
-            tint = if (isSelected) GoldChampagne else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
-            modifier = Modifier.size(24.dp)
-        )
-        Spacer(modifier = Modifier.height(4.dp))
-        Text(
-            text = label,
-            fontSize = 12.sp,
-            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-            color = if (isSelected) GoldChampagne else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
-        )
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center,
+            modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp)
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = label,
+                tint = if (isSelected) GoldBright else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.45f),
+                modifier = Modifier.size(24.dp)
+            )
+            Spacer(modifier = Modifier.height(3.dp))
+            Text(
+                text = label,
+                fontSize = 11.sp,
+                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                color = if (isSelected) GoldBright else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.55f)
+            )
+        }
     }
 }
 
@@ -276,16 +286,28 @@ private fun CenterFloatingHomeButton(
     Box(
         contentAlignment = Alignment.Center,
         modifier = Modifier
-            .offset(y = (-14).dp)
-            .size(62.dp)
-            .shadow(12.dp, CircleShape)
+            .offset(y = (-16).dp)
+            .size(72.dp)
+            .shadow(if (isSelected) 18.dp else 10.dp, CircleShape, spotColor = if (isSelected) GoldBright else EmeraldDeep)
             .clip(CircleShape)
             .background(
-                Brush.radialGradient(
-                    colors = if (isSelected) listOf(GoldChampagne, EmeraldDeep) else listOf(EmeraldMedium, EmeraldDeep)
-                )
+                if (isSelected) {
+                    Brush.radialGradient(
+                        colors = listOf(GoldBright, GoldDark, EmeraldDeep)
+                    )
+                } else {
+                    Brush.radialGradient(
+                        colors = listOf(EmeraldMedium, EmeraldDeep)
+                    )
+                }
             )
-            .border(2.dp, GoldChampagne.copy(alpha = 0.8f), CircleShape)
+            .border(
+                width = if (isSelected) 3.5.dp else 2.dp,
+                brush = Brush.linearGradient(
+                    colors = if (isSelected) listOf(GoldBright, Color.White, GoldDark) else listOf(GoldChampagne.copy(alpha = 0.7f), EmeraldDeep)
+                ),
+                shape = CircleShape
+            )
             .clickable { onClick() }
     ) {
         Column(
@@ -295,14 +317,15 @@ private fun CenterFloatingHomeButton(
             Icon(
                 imageVector = Icons.Default.Mosque,
                 contentDescription = "الرئيسية",
-                tint = if (isSelected) EmeraldDeep else GoldChampagne,
-                modifier = Modifier.size(26.dp)
+                tint = if (isSelected) Color.White else GoldChampagne,
+                modifier = Modifier.size(28.dp)
             )
+            Spacer(modifier = Modifier.height(2.dp))
             Text(
                 text = "الرئيسية",
-                fontSize = 10.sp,
+                fontSize = 11.sp,
                 fontWeight = FontWeight.Bold,
-                color = if (isSelected) EmeraldDeep else Color.White
+                color = if (isSelected) Color.White else GoldChampagne
             )
         }
     }

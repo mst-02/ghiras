@@ -3,10 +3,12 @@ package com.islamic.noor
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.navigation.NavType
@@ -15,6 +17,8 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import com.islamic.noor.data.repository.UserRepository
+import com.islamic.noor.domain.model.AppThemeMode
 import com.islamic.noor.ui.azkar.AzkarScreen
 import com.islamic.noor.ui.charity.GoodDeedsScreen
 import com.islamic.noor.ui.components.AppTopBar
@@ -37,7 +41,13 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
-            NoorTheme {
+            val userProfile by UserRepository.instance.userProfile.collectAsState()
+            val isDark = when (userProfile.appTheme) {
+                AppThemeMode.LIGHT -> false
+                AppThemeMode.DARK -> true
+                AppThemeMode.SYSTEM -> isSystemInDarkTheme()
+            }
+            NoorTheme(darkTheme = isDark) {
                 MainApp()
             }
         }

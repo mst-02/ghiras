@@ -16,24 +16,35 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.border
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
+import androidx.compose.material.icons.filled.AutoStories
 import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.ContactSupport
+import androidx.compose.material.icons.filled.DarkMode
 import androidx.compose.material.icons.filled.Description
+import androidx.compose.material.icons.filled.Eco
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.EmojiEvents
 import androidx.compose.material.icons.filled.FormatListNumbered
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.Mosque
+import androidx.compose.material.icons.filled.NightlightRound
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.Policy
+import androidx.compose.material.icons.filled.PhotoCamera
 import androidx.compose.material.icons.filled.QuestionAnswer
 import androidx.compose.material.icons.filled.Security
+import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.Vibration
+import androidx.compose.material.icons.filled.WbSunny
+import com.islamic.noor.domain.model.AppThemeMode
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -74,6 +85,15 @@ import com.islamic.noor.ui.theme.iconAdaptiveColor
 import com.islamic.noor.ui.theme.isDarkThemeActive
 import com.islamic.noor.ui.theme.titleColor
 
+val IslamicAvatars = listOf(
+    Pair("رمز شخصي", Icons.Default.Person),
+    Pair("مسجد مبارك", Icons.Default.Mosque),
+    Pair("كتاب الله", Icons.Default.AutoStories),
+    Pair("غراس الخير", Icons.Default.Eco),
+    Pair("نور وضياء", Icons.Default.Star),
+    Pair("هلال مبارك", Icons.Default.NightlightRound)
+)
+
 @Composable
 fun ProfileScreen(
     modifier: Modifier = Modifier,
@@ -86,6 +106,9 @@ fun ProfileScreen(
 
     var notificationsEnabled by remember { mutableStateOf(true) }
     var hapticFeedbackEnabled by remember { mutableStateOf(true) }
+    var showAvatarDialog by remember { mutableStateOf(false) }
+
+    val currentAvatarIcon = IslamicAvatars.getOrNull(userProfile.avatarIndex)?.second ?: Icons.Default.Person
 
     // Dialog state for legal / info popups
     var activeDialogTitle by remember { mutableStateOf<String?>(null) }
@@ -117,18 +140,43 @@ fun ProfileScreen(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Surface(
-                                shape = CircleShape,
-                                color = if (isDarkThemeActive()) EmeraldMedium else EmeraldLight,
-                                modifier = Modifier.size(54.dp)
+                            // Clickable Avatar with Camera Badge
+                            Box(
+                                modifier = Modifier
+                                    .size(58.dp)
+                                    .clickable { showAvatarDialog = true }
                             ) {
-                                Box(contentAlignment = Alignment.Center) {
-                                    Icon(
-                                        imageVector = Icons.Default.Person,
-                                        contentDescription = null,
-                                        tint = if (isDarkThemeActive()) GoldBright else EmeraldDeep,
-                                        modifier = Modifier.size(28.dp)
-                                    )
+                                Surface(
+                                    shape = CircleShape,
+                                    color = if (isDarkThemeActive()) EmeraldMedium else EmeraldLight,
+                                    border = BorderStroke(2.dp, GoldBright),
+                                    modifier = Modifier.fillMaxSize()
+                                ) {
+                                    Box(contentAlignment = Alignment.Center) {
+                                        Icon(
+                                            imageVector = currentAvatarIcon,
+                                            contentDescription = "الصورة الشخصية",
+                                            tint = if (isDarkThemeActive()) GoldBright else EmeraldDeep,
+                                            modifier = Modifier.size(30.dp)
+                                        )
+                                    }
+                                }
+                                Surface(
+                                    shape = CircleShape,
+                                    color = GoldChampagne,
+                                    modifier = Modifier
+                                        .size(20.dp)
+                                        .align(Alignment.BottomEnd)
+                                        .border(1.5.dp, MaterialTheme.colorScheme.surface, CircleShape)
+                                ) {
+                                    Box(contentAlignment = Alignment.Center) {
+                                        Icon(
+                                            imageVector = Icons.Default.PhotoCamera,
+                                            contentDescription = "تغيير الصورة",
+                                            tint = EmeraldDeep,
+                                            modifier = Modifier.size(12.dp)
+                                        )
+                                    }
                                 }
                             }
 
@@ -145,6 +193,12 @@ fun ProfileScreen(
                                     text = if (userProfile.phone.isNotBlank()) userProfile.phone else "لم يتم تسجيل رقم الهاتف",
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.65f)
+                                )
+                                Text(
+                                    text = "اضغط على الصورة لتغييرها",
+                                    fontSize = 10.sp,
+                                    color = GoldDark,
+                                    fontWeight = FontWeight.Medium
                                 )
                             }
                         }
@@ -280,7 +334,76 @@ fun ProfileScreen(
                         fontWeight = FontWeight.Bold,
                         color = titleColor()
                     )
-                    Spacer(modifier = Modifier.height(12.dp))
+                    Spacer(modifier = Modifier.height(10.dp))
+
+                    // وضع النهار ووضع الليل (Day / Night App-wide Toggle)
+                    Text(
+                        text = "مظهر التطبيق العام",
+                        style = MaterialTheme.typography.bodySmall,
+                        fontWeight = FontWeight.Medium,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                    )
+                    Spacer(modifier = Modifier.height(6.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        // وضع النهار
+                        val isLightMode = userProfile.appTheme == AppThemeMode.LIGHT
+                        Surface(
+                            shape = RoundedCornerShape(12.dp),
+                            color = if (isLightMode) GoldChampagne.copy(alpha = 0.25f) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
+                            border = if (isLightMode) BorderStroke(1.5.dp, GoldBright) else BorderStroke(1.dp, Color.Gray.copy(alpha = 0.2f)),
+                            modifier = Modifier
+                                .weight(1f)
+                                .clip(RoundedCornerShape(12.dp))
+                                .clickable { userRepository.setAppTheme(AppThemeMode.LIGHT) }
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(vertical = 10.dp, horizontal = 12.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.Center
+                            ) {
+                                Icon(Icons.Default.WbSunny, contentDescription = null, tint = if (isLightMode) GoldDark else Color.Gray, modifier = Modifier.size(20.dp))
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text(
+                                    text = "وضع النهار",
+                                    fontWeight = if (isLightMode) FontWeight.Bold else FontWeight.Normal,
+                                    color = if (isLightMode) titleColor() else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.65f),
+                                    fontSize = 12.sp
+                                )
+                            }
+                        }
+
+                        // وضع الليل
+                        val isDarkMode = userProfile.appTheme == AppThemeMode.DARK
+                        Surface(
+                            shape = RoundedCornerShape(12.dp),
+                            color = if (isDarkMode) EmeraldMedium.copy(alpha = 0.45f) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
+                            border = if (isDarkMode) BorderStroke(1.5.dp, GoldBright) else BorderStroke(1.dp, Color.Gray.copy(alpha = 0.2f)),
+                            modifier = Modifier
+                                .weight(1f)
+                                .clip(RoundedCornerShape(12.dp))
+                                .clickable { userRepository.setAppTheme(AppThemeMode.DARK) }
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(vertical = 10.dp, horizontal = 12.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.Center
+                            ) {
+                                Icon(Icons.Default.DarkMode, contentDescription = null, tint = if (isDarkMode) GoldBright else Color.Gray, modifier = Modifier.size(20.dp))
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text(
+                                    text = "وضع الليل",
+                                    fontWeight = if (isDarkMode) FontWeight.Bold else FontWeight.Normal,
+                                    color = if (isDarkMode) GoldBright else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.65f),
+                                    fontSize = 12.sp
+                                )
+                            }
+                        }
+                    }
+
+                    HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp))
 
                     Row(
                         modifier = Modifier.fillMaxWidth(),
@@ -425,6 +548,74 @@ fun ProfileScreen(
                     colors = ButtonDefaults.buttonColors(containerColor = buttonAdaptiveColor())
                 ) {
                     Text("إغلاق", color = Color.White)
+                }
+            }
+        )
+    }
+
+    // Avatar Selection Dialog
+    if (showAvatarDialog) {
+        AlertDialog(
+            onDismissRequest = { showAvatarDialog = false },
+            title = {
+                Text("اختر الصورة الشخصية", fontWeight = FontWeight.Bold, color = titleColor())
+            },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Text(
+                        "اختر رمزاً إسلامياً مباركاً يعبر عنك في رحاب غِراس:",
+                        fontSize = 13.sp,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.75f)
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    LazyRow(
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 8.dp)
+                    ) {
+                        itemsIndexed(IslamicAvatars) { index, pair ->
+                            val isSelected = userProfile.avatarIndex == index
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(12.dp))
+                                    .clickable {
+                                        userRepository.setAvatar(index)
+                                        showAvatarDialog = false
+                                    }
+                                    .padding(4.dp)
+                            ) {
+                                Surface(
+                                    shape = CircleShape,
+                                    color = if (isSelected) GoldChampagne else (if (isDarkThemeActive()) EmeraldMedium else EmeraldLight),
+                                    border = if (isSelected) BorderStroke(2.dp, GoldBright) else null,
+                                    modifier = Modifier.size(52.dp)
+                                ) {
+                                    Box(contentAlignment = Alignment.Center) {
+                                        Icon(
+                                            imageVector = pair.second,
+                                            contentDescription = pair.first,
+                                            tint = if (isSelected) EmeraldDeep else (if (isDarkThemeActive()) GoldBright else EmeraldDeep),
+                                            modifier = Modifier.size(28.dp)
+                                        )
+                                    }
+                                }
+                                Spacer(modifier = Modifier.height(6.dp))
+                                Text(
+                                    text = pair.first,
+                                    fontSize = 11.sp,
+                                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                                    color = if (isSelected) GoldBright else MaterialTheme.colorScheme.onSurface
+                                )
+                            }
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showAvatarDialog = false }) {
+                    Text("إلغاء", color = titleColor())
                 }
             }
         )

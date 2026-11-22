@@ -13,8 +13,16 @@ data class UserProfile(
     val notificationsEnabled: Boolean = true,
     val quranFontSize: Float = 24f,
     val quranLineHeight: Float = 1.8f,
-    val readingTheme: ReadingTheme = ReadingTheme.SEPIA
+    val readingTheme: ReadingTheme = ReadingTheme.SEPIA,
+    val appTheme: AppThemeMode = AppThemeMode.DARK,
+    val avatarIndex: Int = 0
 )
+
+enum class AppThemeMode {
+    LIGHT,   // وضع النهار
+    DARK,    // وضع الليل
+    SYSTEM   // تلقائي
+}
 
 enum class ReadingTheme {
     LIGHT,   // وضع النهار

@@ -1,5 +1,6 @@
 package com.islamic.noor.data.repository
 
+import com.islamic.noor.domain.model.AppThemeMode
 import com.islamic.noor.domain.model.ReadingTheme
 import com.islamic.noor.domain.model.UserProfile
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -74,6 +75,14 @@ class UserRepository {
             quranLineHeight = lineHeight,
             readingTheme = theme
         )
+    }
+
+    fun setAppTheme(themeMode: AppThemeMode) {
+        _userProfile.value = _userProfile.value.copy(appTheme = themeMode)
+    }
+
+    fun setAvatar(index: Int) {
+        _userProfile.value = _userProfile.value.copy(avatarIndex = index)
     }
 
     companion object {
