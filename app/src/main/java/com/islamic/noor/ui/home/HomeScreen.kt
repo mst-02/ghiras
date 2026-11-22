@@ -47,8 +47,10 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -71,6 +73,8 @@ import com.islamic.noor.ui.theme.GoldBright
 import com.islamic.noor.ui.theme.GoldChampagne
 import com.islamic.noor.ui.theme.GoldDark
 import com.islamic.noor.ui.theme.titleColor
+import kotlinx.coroutines.delay
+import java.util.Calendar
 
 @Composable
 fun HomeScreen(
@@ -89,7 +93,7 @@ fun HomeScreen(
         contentPadding = PaddingValues(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        // 1. دعاء اليوم في الأول تماماً مع علامة إتمام القراءة تحت على الشمال
+        // 1. دعاء اليوم في الأول تماماً (بدون زر "اضغط للقراءة" المشتت، ومع علامة تمت القراءة أسفل اليسار)
         item(key = "daily_dua") {
             Card(
                 shape = RoundedCornerShape(22.dp),
@@ -130,14 +134,15 @@ fun HomeScreen(
                             )
                         }
 
+                        // Category chip
                         Surface(
                             shape = RoundedCornerShape(8.dp),
-                            color = if (isDuaRead) EmeraldLight else MaterialTheme.colorScheme.surfaceVariant
+                            color = EmeraldLight
                         ) {
                             Text(
-                                text = if (isDuaRead) "تمت القراءة" else "اضغط للقراءة",
-                                color = if (isDuaRead) EmeraldDeep else MaterialTheme.colorScheme.onSurfaceVariant,
-                                fontSize = 11.sp,
+                                text = "سنة نبوية",
+                                color = EmeraldDeep,
+                                fontSize = 10.sp,
                                 fontWeight = FontWeight.Bold,
                                 modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
                             )
@@ -147,22 +152,23 @@ fun HomeScreen(
                     Spacer(modifier = Modifier.height(12.dp))
 
                     Text(
-                        text = "«اللَّهُمَّ إِنِّي أَسْأَلُكَ عِلْمًا نَافِعًا، وَرِزْقًا طَيِّبًا، وَعَمَلاً مُتَقَبَّلاً، اللَّهُمَّ اجْعَلْ يَوْمَنَا هَذَا خَيْرًا وَبَرَكَةً وَفَرَجًا مِنْ كُلِّ ضِيقٍ».",
+                        text = "«اللَّهُمَّ إِنِّي أَسْأَلُكَ عِلْمًا نَافِعًا، وَرِزْقًا طَيِّبًا، وَعَمَلًا مُتَقَبَّلًا»",
                         style = MaterialTheme.typography.bodyLarge,
-                        fontSize = 17.sp,
-                        lineHeight = 28.sp,
-                        fontWeight = FontWeight.Medium,
-                        color = MaterialTheme.colorScheme.onSurface
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Bold,
+                        lineHeight = 30.sp,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        textAlign = TextAlign.Start
                     )
 
-                    Spacer(modifier = Modifier.height(10.dp))
+                    Spacer(modifier = Modifier.height(12.dp))
 
+                    // علامة القراءة أسفل اليسار كما طُلب
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        // علامة تم القراءة تحت على الشمال
                         if (isDuaRead) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Icon(
@@ -181,7 +187,7 @@ fun HomeScreen(
                             }
                         } else {
                             Text(
-                                text = "اضغط على الدعاء لتأكيد القراءة",
+                                text = "اضغط على البطاقة لتأكيد القراءة",
                                 fontSize = 11.sp,
                                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
                             )
@@ -197,7 +203,7 @@ fun HomeScreen(
             }
         }
 
-        // 2. مواعيد الصلاة وزر القبلة
+        // 2. مواعيد الصلاة مع عداد تنازلي حي بالثواني
         item(key = "prayer_card") {
             PrayerTimelineCard(onQiblaClick = { onNavigate(Screen.Qibla.route) })
         }
@@ -223,12 +229,12 @@ fun HomeScreen(
             }
         }
 
-        // 4. الأقسام الثمانية (بأسماء واضحة ومختصرة حسب التوجيه)
+        // 4. الأقسام الثمانية
         item(key = "services_grid") {
             ServicesGrid(onNavigate = onNavigate)
         }
 
-        // 5. آية وتدبر (قابلة للقلب وعرض الشرح وقصة الآية)
+        // 5. آية وتدبر
         item(key = "verse_reflection") {
             Card(
                 shape = RoundedCornerShape(20.dp),
@@ -259,38 +265,39 @@ fun HomeScreen(
 
                     Spacer(modifier = Modifier.height(12.dp))
 
-                    Text(
-                        text = "«فَاذْكُرُونِي أَذْكُرْكُمْ وَاشْكُرُوا لِي وَلَا تَكْفُرُونِ»",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        textAlign = TextAlign.Center,
-                        lineHeight = 28.sp,
-                        color = MaterialTheme.colorScheme.onSurface,
-                        modifier = Modifier.fillMaxWidth()
-                    )
-
-                    Spacer(modifier = Modifier.height(8.dp))
-
-                    Text(
-                        text = if (isVerseFlipped) "إخفاء التفسير ▲" else "اضغط لقراءة التفسير وبيان الآية ▼",
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = GoldChampagne,
-                        textAlign = TextAlign.Center,
-                        modifier = Modifier.fillMaxWidth()
-                    )
-
-                    AnimatedVisibility(visible = isVerseFlipped) {
-                        Column(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(top = 10.dp)
-                        ) {
+                    if (!isVerseFlipped) {
+                        Text(
+                            text = "«فَاذْكُرُونِي أَذْكُرْكُمْ وَاشْكُرُوا لِي وَلَا تَكْفُرُونِ»",
+                            style = MaterialTheme.typography.bodyLarge,
+                            fontSize = 19.sp,
+                            lineHeight = 32.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = titleColor(),
+                            textAlign = TextAlign.Center,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = "اضغط على البطاقة لعرض التفسير والتدبر",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
+                            textAlign = TextAlign.Center,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    } else {
+                        Column {
                             Text(
-                                text = "التفسير الميسر: اذكروني بطاعتي وشكري بالقلب واللسان والجوارح، أذكركم بمغفرتي وثوابي وتفريج كربكم، واشكروا لي على نعمي ولا تجحدوها.",
+                                text = "التفسير الميسر:",
+                                fontWeight = FontWeight.Bold,
+                                color = GoldChampagne,
+                                fontSize = 13.sp
+                            )
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                text = "فاذكروني -أيها المؤمنون- بطاعتي وعبادتي أذكركم بالثواب والمغفرة، واشكروا لي نعمي الجليلة عليكم ولا تجحدوها. ومن ذكر الله في نفسه ذكره الله في نفسه، ومن ذكره في ملأ ذكره في ملأ خير منهم.",
                                 style = MaterialTheme.typography.bodyMedium,
-                                lineHeight = 22.sp,
-                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.85f)
+                                lineHeight = 24.sp,
+                                color = MaterialTheme.colorScheme.onSurface
                             )
                             Spacer(modifier = Modifier.height(10.dp))
                             Row(
@@ -311,7 +318,7 @@ fun HomeScreen(
             }
         }
 
-        // 6. من هدي النبوة (حديث شريف)
+        // 6. من هدي النبوة
         item(key = "daily_hadith") {
             Card(
                 shape = RoundedCornerShape(20.dp),
@@ -402,40 +409,40 @@ private fun ServicesGrid(onNavigate: (String) -> Unit) {
         ) {
             LuxuryFeatureCard(
                 title = "المصحف الشريف",
-                subtitle = "قراءة عثمانية وبحث آيات",
+                subtitle = "قراءة عثمانية وتفسير",
                 icon = Icons.AutoMirrored.Filled.MenuBook,
-                accentColor = EmeraldDeep,
+                accentColor = GoldBright,
                 onClick = { onNavigate(Screen.Quran.route) },
                 modifier = Modifier.weight(1f)
             )
 
             LuxuryFeatureCard(
-                title = "الأذكار",
-                subtitle = "أذكار الصباح والمساء واليوم",
-                icon = Icons.Default.Book,
-                accentColor = GoldDark,
+                title = "الأذكار وحصن المسلم",
+                subtitle = "أذكار يومية وإعداد مخصص",
+                icon = Icons.Default.Spa,
+                accentColor = EmeraldLight,
                 onClick = { onNavigate(Screen.Azkar.route) },
                 modifier = Modifier.weight(1f)
             )
         }
 
-        // Row 2: السبحة & اتجاه القبلة
+        // Row 2: السبحة & القبلة
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             LuxuryFeatureCard(
-                title = "السبحة",
-                subtitle = "عداد مرن واختيار الذكر",
+                title = "السبحة الإلكترونية",
+                subtitle = "حجم مخصص وعداد مرن",
                 icon = Icons.Default.FormatListNumbered,
-                accentColor = EmeraldDeep,
+                accentColor = GoldChampagne,
                 onClick = { onNavigate(Screen.Tasbeeh.route) },
                 modifier = Modifier.weight(1f)
             )
 
             LuxuryFeatureCard(
                 title = "اتجاه القبلة",
-                subtitle = "بوصلة دقيقة ومواقيت الصلاة",
+                subtitle = "بوصلة مستشعر بدون نت",
                 icon = Icons.Default.CompassCalibration,
                 accentColor = GoldDark,
                 onClick = { onNavigate(Screen.Qibla.route) },
@@ -443,7 +450,7 @@ private fun ServicesGrid(onNavigate: (String) -> Unit) {
             )
         }
 
-        // Row 3: الختمة الجماعية & الأدعية
+        // Row 3: الختمة الجماعية & أدعية للمتوفين
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(12.dp)
@@ -452,16 +459,16 @@ private fun ServicesGrid(onNavigate: (String) -> Unit) {
                 title = "الختمة الجماعية",
                 subtitle = "ختم القرآن مع الأهل والأحباب",
                 icon = Icons.Default.Groups,
-                accentColor = EmeraldDeep,
+                accentColor = EmeraldLight,
                 onClick = { onNavigate(Screen.GroupKhatmah.route) },
                 modifier = Modifier.weight(1f)
             )
 
             LuxuryFeatureCard(
-                title = "الأدعية",
-                subtitle = "للمتوفين والرزق والشفاء",
+                title = "أدعية للمتوفين",
+                subtitle = "صدقة جارية وتخصيص الاسم",
                 icon = Icons.Default.Favorite,
-                accentColor = GoldDark,
+                accentColor = Color(0xFFC62828),
                 onClick = { onNavigate(Screen.Duas.route) },
                 modifier = Modifier.weight(1f)
             )
@@ -474,9 +481,9 @@ private fun ServicesGrid(onNavigate: (String) -> Unit) {
         ) {
             LuxuryFeatureCard(
                 title = "غِراس الخير",
-                subtitle = "حفر آبار ومساجد وأسهم صدقة",
-                icon = Icons.Default.Spa,
-                accentColor = EmeraldDeep,
+                subtitle = "أبواب الصدقات وفضلها",
+                icon = Icons.Default.VolunteerActivism,
+                accentColor = GoldBright,
                 onClick = { onNavigate(Screen.GoodDeeds.route) },
                 modifier = Modifier.weight(1f)
             )
@@ -551,6 +558,25 @@ private fun LuxuryFeatureCard(
 
 @Composable
 private fun PrayerTimelineCard(onQiblaClick: () -> Unit) {
+    // Real-time live countdown timer (ticking every second)
+    var remainingSeconds by remember { mutableLongStateOf(5075L) } // ~ 01:24:35
+
+    LaunchedEffect(Unit) {
+        while (true) {
+            delay(1000)
+            if (remainingSeconds > 0) {
+                remainingSeconds--
+            } else {
+                remainingSeconds = 3600 * 3
+            }
+        }
+    }
+
+    val hours = remainingSeconds / 3600
+    val minutes = (remainingSeconds % 3600) / 60
+    val seconds = remainingSeconds % 60
+    val countdownFormatted = String.format("%02d:%02d:%02d", hours, minutes, seconds)
+
     Card(
         shape = RoundedCornerShape(22.dp),
         colors = CardDefaults.cardColors(containerColor = Color.Transparent),
@@ -589,11 +615,13 @@ private fun PrayerTimelineCard(onQiblaClick: () -> Unit) {
                                 fontWeight = FontWeight.Bold
                             )
                         }
-                        Spacer(modifier = Modifier.height(2.dp))
+                        Spacer(modifier = Modifier.height(3.dp))
+                        // Real-time ticking countdown
                         Text(
-                            text = "متبقي 01:25:00 على الأذان",
+                            text = "متبقي $countdownFormatted على الأذان",
                             style = MaterialTheme.typography.bodySmall,
-                            color = Color.White.copy(alpha = 0.85f)
+                            color = Color.White.copy(alpha = 0.95f),
+                            fontWeight = FontWeight.Medium
                         )
                     }
 
@@ -627,16 +655,16 @@ private fun PrayerTimelineCard(onQiblaClick: () -> Unit) {
 
                 Spacer(modifier = Modifier.height(16.dp))
 
+                // Prayer Timeline
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    MinimalPrayerPill("الفجر", "04:58")
-                    MinimalPrayerPill("الشروق", "06:27")
-                    MinimalPrayerPill("الظهر", "11:46")
-                    MinimalPrayerPill("العصر", "02:44", isActive = true)
-                    MinimalPrayerPill("المغرب", "05:04")
-                    MinimalPrayerPill("العشاء", "06:24")
+                    PrayerPill("الفجر", "04:58", false)
+                    PrayerPill("الظهر", "11:46", false)
+                    PrayerPill("العصر", "02:44", true) // Next active
+                    PrayerPill("المغرب", "05:04", false)
+                    PrayerPill("العشاء", "06:24", false)
                 }
             }
         }
@@ -644,25 +672,29 @@ private fun PrayerTimelineCard(onQiblaClick: () -> Unit) {
 }
 
 @Composable
-private fun MinimalPrayerPill(name: String, time: String, isActive: Boolean = false) {
-    Column(
-        horizontalAlignment = Alignment.CenterHorizontally,
-        modifier = Modifier
-            .clip(RoundedCornerShape(10.dp))
-            .background(if (isActive) GoldChampagne else Color.White.copy(alpha = 0.12f))
-            .padding(horizontal = 7.dp, vertical = 5.dp)
+private fun PrayerPill(name: String, time: String, isNext: Boolean) {
+    Surface(
+        shape = RoundedCornerShape(12.dp),
+        color = if (isNext) GoldChampagne else Color.White.copy(alpha = 0.12f),
+        modifier = Modifier.padding(2.dp)
     ) {
-        Text(
-            text = name,
-            fontSize = 11.sp,
-            fontWeight = FontWeight.Bold,
-            color = if (isActive) EmeraldDeep else Color.White
-        )
-        Text(
-            text = time,
-            fontSize = 10.sp,
-            color = if (isActive) EmeraldDeep else Color.White.copy(alpha = 0.85f)
-        )
+        Column(
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Text(
+                text = name,
+                color = if (isNext) EmeraldDeep else Color.White,
+                fontSize = 11.sp,
+                fontWeight = if (isNext) FontWeight.Bold else FontWeight.Normal
+            )
+            Text(
+                text = time,
+                color = if (isNext) EmeraldDeep else Color.White.copy(alpha = 0.85f),
+                fontSize = 10.sp,
+                fontWeight = FontWeight.SemiBold
+            )
+        }
     }
 }
 
@@ -672,53 +704,61 @@ private fun WeeklyContestBottomCard(onClick: () -> Unit) {
         shape = RoundedCornerShape(20.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        border = androidx.compose.foundation.BorderStroke(1.2.dp, GoldChampagne.copy(alpha = 0.7f)),
         modifier = Modifier
             .fillMaxWidth()
-            .border(1.5.dp, GoldChampagne.copy(alpha = 0.6f), RoundedCornerShape(20.dp))
             .clickable { onClick() }
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(16.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Surface(
-                shape = CircleShape,
-                color = GoldChampagne.copy(alpha = 0.2f),
-                modifier = Modifier.size(48.dp)
-            ) {
-                Box(contentAlignment = Alignment.Center) {
-                    Icon(
-                        imageVector = Icons.Default.CardGiftcard,
-                        contentDescription = "مسابقة الأسبوع",
-                        tint = GoldDark,
-                        modifier = Modifier.size(24.dp)
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Surface(
+                    shape = CircleShape,
+                    color = GoldChampagne.copy(alpha = 0.2f),
+                    modifier = Modifier.size(46.dp)
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Icon(
+                            imageVector = Icons.Default.CardGiftcard,
+                            contentDescription = null,
+                            tint = GoldDark,
+                            modifier = Modifier.size(24.dp)
+                        )
+                    }
+                }
+                Spacer(modifier = Modifier.width(12.dp))
+                Column {
+                    Text(
+                        text = "مسابقة غِراس الأسبوعية",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = titleColor()
+                    )
+                    Text(
+                        text = "جاوب على سؤال اليوم مجاناً وادخل السحب",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.65f)
                     )
                 }
             }
 
-            Spacer(modifier = Modifier.width(14.dp))
-
-            Column(modifier = Modifier.weight(1f)) {
+            Surface(
+                shape = RoundedCornerShape(10.dp),
+                color = GoldChampagne.copy(alpha = 0.2f)
+            ) {
                 Text(
-                    text = "مسابقة الأسبوع (جوائز قيمة)",
-                    style = MaterialTheme.typography.titleMedium,
+                    text = "شارك الآن ←",
+                    color = GoldDark,
+                    fontSize = 12.sp,
                     fontWeight = FontWeight.Bold,
-                    color = titleColor()
-                )
-                Text(
-                    text = "جاوب على سؤال اليوم مجاناً وادخل السحب الأسبوعي",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
                 )
             }
-
-            Icon(
-                imageVector = Icons.AutoMirrored.Filled.ArrowForward,
-                contentDescription = null,
-                tint = GoldChampagne
-            )
         }
     }
 }

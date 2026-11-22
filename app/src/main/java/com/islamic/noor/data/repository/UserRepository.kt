@@ -85,6 +85,26 @@ class UserRepository {
         _userProfile.value = _userProfile.value.copy(avatarIndex = index)
     }
 
+    fun saveBookmark(surahId: Int, surahName: String, verseNumber: Int) {
+        _userProfile.value = _userProfile.value.copy(
+            lastReadSurahId = surahId,
+            lastReadSurahName = surahName,
+            lastReadVerseNumber = verseNumber
+        )
+    }
+
+    fun setAthanSoundEnabled(enabled: Boolean) {
+        _userProfile.value = _userProfile.value.copy(athanSoundEnabled = enabled)
+    }
+
+    fun setIqamaDelay(minutes: Int) {
+        _userProfile.value = _userProfile.value.copy(iqamaDelayMinutes = minutes)
+    }
+
+    fun setGovernorate(gov: String) {
+        _userProfile.value = _userProfile.value.copy(selectedGovernorate = gov)
+    }
+
     companion object {
         val instance = UserRepository()
     }

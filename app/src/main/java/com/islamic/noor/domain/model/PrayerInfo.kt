@@ -6,7 +6,8 @@ import androidx.compose.runtime.Immutable
 data class PrayerTimeItem(
     val nameArabic: String,
     val timeFormatted: String,
-    val isNext: Boolean = false
+    val isNext: Boolean = false,
+    val iqamaDelayMinutes: Int = 15
 ) {
     val name: String get() = nameArabic
     val time: String get() = timeFormatted

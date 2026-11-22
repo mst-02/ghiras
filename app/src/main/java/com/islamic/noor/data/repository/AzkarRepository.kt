@@ -7,25 +7,40 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
-import kotlinx.coroutines.flow.map
 
 class AzkarRepository {
 
+    val customCategories = MutableStateFlow<List<String>>(listOf("أذكاري المخصصة"))
     val customAzkarList = MutableStateFlow<List<ZekrItem>>(emptyList())
+    val favoriteIds = MutableStateFlow<Set<Int>>(emptySet())
 
-    fun getAzkarCategories(): List<String> = listOf(
+    fun getStandardCategories(): List<String> = listOf(
         "أذكار الصباح",
         "أذكار المساء",
         "أذكار النوم",
         "أذكار الاستيقاظ",
         "أذكار بعد الصلاة",
-        "أذكاري المخصصة",
-        "الأحاديث النبوية"
+        "أذكار المسجد"
     )
 
+    fun addCustomCategory(name: String) {
+        val trimmed = name.trim()
+        if (trimmed.isNotBlank() && !customCategories.value.contains(trimmed)) {
+            customCategories.value = customCategories.value + trimmed
+        }
+    }
+
     fun getAzkarByCategory(category: String): Flow<List<ZekrItem>> {
-        if (category == "أذكاري المخصصة") {
-            return customAzkarList
+        if (category == "الأذكار المفضلة") {
+            return flow {
+                val favs = (ALL_AZKAR + customAzkarList.value).filter { favoriteIds.value.contains(it.id) }
+                emit(favs)
+            }.flowOn(Dispatchers.IO)
+        }
+        if (customCategories.value.contains(category) || category == "أذكاري المخصصة") {
+            return flow {
+                emit(customAzkarList.value.filter { it.category == category })
+            }.flowOn(Dispatchers.IO)
         }
         return flow {
             val items = ALL_AZKAR.filter { it.category == category }
@@ -33,24 +48,49 @@ class AzkarRepository {
         }.flowOn(Dispatchers.IO)
     }
 
-    fun addCustomZekr(text: String, count: Int, reward: String = "") {
+    fun addCustomZekr(category: String, text: String, count: Int, reward: String = "") {
         val newItem = ZekrItem(
             id = (System.currentTimeMillis() % 100000).toInt(),
-            category = "أذكاري المخصصة",
+            category = category,
             text = text.trim(),
             count = count,
             reward = reward.trim(),
-            reference = "ذكر شخصي محفوظ محلياً",
+            reference = "ذكر خاص محفوظ محلياً",
             isCustom = true
         )
         customAzkarList.value = customAzkarList.value + newItem
     }
+
+    fun deleteCustomZekr(id: Int) {
+        customAzkarList.value = customAzkarList.value.filter { it.id != id }
+    }
+
+    fun editCustomZekr(id: Int, text: String, count: Int, reward: String) {
+        customAzkarList.value = customAzkarList.value.map {
+            if (it.id == id) {
+                it.copy(text = text.trim(), count = count, reward = reward.trim())
+            } else it
+        }
+    }
+
+    fun toggleFavorite(id: Int) {
+        val current = favoriteIds.value
+        favoriteIds.value = if (current.contains(id)) {
+            current - id
+        } else {
+            current + id
+        }
+    }
+
+    fun isFavorite(id: Int): Boolean = favoriteIds.value.contains(id)
 
     fun getAllHadiths(): Flow<List<HadithItem>> = flow {
         emit(SAMPLE_HADITHS)
     }.flowOn(Dispatchers.IO)
 
     companion object {
+        val instance = AzkarRepository()
+
         val ALL_AZKAR = listOf(
             // الصباح
             ZekrItem(1, "أذكار الصباح", "أَصْبَحْنَا وَأَصْبَحَ الْمُلْكُ لِلَّهِ، وَالْحَمْدُ لِلَّهِ، لاَ إِلَـهَ إِلاَّ اللهُ وَحْدَهُ لاَ شَرِيكَ لَهُ، لَهُ الْمُلْكُ وَلَهُ الْحَمْدُ وَهُوَ عَلَى كُلِّ شَيْءٍ قَدِيرٌ.", 1, "حفظ المسلم وكفايته يومه", "رواه مسلم"),
@@ -59,7 +99,7 @@ class AzkarRepository {
             ZekrItem(4, "أذكار الصباح", "بِسْمِ اللَّهِ الَّذِي لاَ يَضُرُّ مَعَ اسْمِهِ شَيْءٌ فِي الأَرْضِ وَلاَ فِي السَّمَاءِ وَهُوَ السَّمِيعُ العَلِيمُ.", 3, "لم يضره شيء حتى يمسي", "رواه أبو داود والترمذي"),
 
             // المساء
-            ZekrItem(5, "أذكار المساء", "أَمْسَيْنَا وَأَمْسَى الْمُلْكُ لِلَّهِ، وَالْحَمْدُ لِلَّهِ، لاَ إِلَـهَ إِلاَّ اللهُ وَحْدَهُ لاَ شَرِيكَ لَهُ.", 1, "حفظ المسلم ليلته", "رواه مسلم"),
+            ZekrItem(5, "أذكار المساء", "أَمْسَيْنَا وَأَمْسَى الْمُلْكُ لِلَّهِ، وَالْحَمْدُ لِلَّهِ، لاَ إِلَـهَ إِلاَّ اللهُ وَحْدَهُ لاَ شَرِيكَ لَهُ، لَهُ الْمُلْكُ وَلَهُ الْحَمْدُ وَهُوَ عَلَى كُلِّ شَيْءٍ قَدِيرٌ.", 1, "حفظ المسلم ليلته", "رواه مسلم"),
             ZekrItem(6, "أذكار المساء", "أَعُوذُ بِكَلِمَاتِ اللَّهِ التَّامَّاتِ مِنْ شَرِّ مَا خَلَقَ.", 3, "لم يضره شيء في ليلته", "رواه مسلم"),
             ZekrItem(7, "أذكار المساء", "اللَّهُمَّ بِكَ أَمْسَيْنَا، وَبِكَ أَصْبَحْنَا، وَبِكَ نَحْيَا، وَبِكَ نَمُوتُ وَإِلَيْكَ الْمَصِيرُ.", 1, "شكر نعمة المساء", "رواه الترمذي"),
 
@@ -73,7 +113,11 @@ class AzkarRepository {
 
             // بعد الصلاة
             ZekrItem(12, "أذكار بعد الصلاة", "أَسْتَغْفِرُ اللهَ (ثلاثاً)، اللَّهُمَّ أَنْتَ السَّلاَمُ وَمِنْكَ السَّلاَمُ، تَبَارَكْتَ يَا ذَا الْجَلاَلِ وَالإِكْرَامِ.", 1, "سنة بعد الفريضة مباشرة", "رواه مسلم"),
-            ZekrItem(13, "أذكار بعد الصلاة", "سُبْحَانَ اللهِ (33)، الْحَمْدُ لِلَّهِ (33)، اللهُ أَكْبَرُ (33)، لا إله إلا الله وحده لا شريك له له الملك وله الحمد وهو على كل شيء قدير.", 33, "غُفرت خطاياه وإن كانت مثل زبد البحر", "رواه مسلم")
+            ZekrItem(13, "أذكار بعد الصلاة", "سُبْحَانَ اللهِ (33)، الْحَمْدُ لِلَّهِ (33)، اللهُ أَكْبَرُ (33)، لا إله إلا الله وحده لا شريك له له الملك وله الحمد وهو على كل شيء قدير.", 33, "غُفرت خطاياه وإن كانت مثل زبد البحر", "رواه مسلم"),
+
+            // المسجد
+            ZekrItem(14, "أذكار المسجد", "اللَّهُمَّ افْتَحْ لِي أَبْوَابَ رَحْمَتِكَ (عند دخول المسجد).", 1, "دعاء دخول المسجد", "رواه مسلم"),
+            ZekrItem(15, "أذكار المسجد", "اللَّهُمَّ إِنِّي أَسْأَلُكَ مِنْ فَضْلِكَ (عند الخروج من المسجد).", 1, "دعاء الخروج من المسجد", "رواه مسلم")
         )
 
         val SAMPLE_HADITHS = listOf(

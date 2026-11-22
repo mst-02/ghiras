@@ -92,18 +92,24 @@ fun MainApp() {
             }
         },
         bottomBar = {
-            ModernAppBottomNav(
-                currentRoute = currentRoute,
-                onNavigate = { route ->
-                    navController.navigate(route) {
-                        popUpTo(Screen.Home.route) {
-                            saveState = true
+            if (currentRoute?.startsWith("surah_detail") != true) {
+                ModernAppBottomNav(
+                    currentRoute = currentRoute,
+                    onNavigate = { route ->
+                        if (route == Screen.Home.route) {
+                            navController.popBackStack(Screen.Home.route, inclusive = false)
+                        } else {
+                            navController.navigate(route) {
+                                popUpTo(Screen.Home.route) {
+                                    saveState = true
+                                }
+                                launchSingleTop = true
+                                restoreState = true
+                            }
                         }
-                        launchSingleTop = true
-                        restoreState = true
                     }
-                }
-            )
+                )
+            }
         },
         modifier = Modifier.fillMaxSize()
     ) { innerPadding ->

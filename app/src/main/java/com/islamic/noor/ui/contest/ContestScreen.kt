@@ -39,6 +39,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.RadioButtonDefaults
 import androidx.compose.material3.Surface
@@ -439,7 +440,7 @@ fun ContestScreen(
                 Text(
                     text = "تسجيل الدخول للمشاركة",
                     fontWeight = FontWeight.Bold,
-                    color = titleColor()
+                    color = GoldBright
                 )
             },
             text = {
@@ -447,7 +448,7 @@ fun ContestScreen(
                     Text(
                         text = "يرجى إدخال اسمك ورقم هاتفك لحفظ مشاركتك في القرعة:",
                         style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f)
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.9f)
                     )
 
                     OutlinedTextField(
@@ -455,6 +456,10 @@ fun ContestScreen(
                         onValueChange = { inputName = it },
                         label = { Text("الاسم (أو اسم المستخدم)") },
                         singleLine = true,
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = GoldChampagne,
+                            focusedLabelColor = GoldChampagne
+                        ),
                         modifier = Modifier.fillMaxWidth()
                     )
 
@@ -463,6 +468,10 @@ fun ContestScreen(
                         onValueChange = { inputPhoneOrPass = it },
                         label = { Text("رقم الهاتف (أو كلمة المرور)") },
                         singleLine = true,
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = GoldChampagne,
+                            focusedLabelColor = GoldChampagne
+                        ),
                         modifier = Modifier.fillMaxWidth()
                     )
 
@@ -473,7 +482,7 @@ fun ContestScreen(
                     Text(
                         text = "ملاحظة: للأدمن، اكتب admin وكلمة المرور 1234",
                         style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                        color = GoldChampagne.copy(alpha = 0.85f)
                     )
                 }
             },
@@ -517,14 +526,14 @@ fun ContestScreen(
                             }
                         }
                     },
-                    colors = ButtonDefaults.buttonColors(containerColor = buttonAdaptiveColor())
+                    colors = ButtonDefaults.buttonColors(containerColor = EmeraldDeep)
                 ) {
-                    Text("دخول وإرسال الإجابة", color = Color.White)
+                    Text("دخول وإرسال الإجابة", color = Color.White, fontWeight = FontWeight.Bold)
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showLoginPromptDialog = false }) {
-                    Text("إلغاء")
+                    Text("إلغاء", color = GoldChampagne, fontWeight = FontWeight.Bold)
                 }
             }
         )

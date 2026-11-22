@@ -11,11 +11,17 @@ data class UserProfile(
     val totalTasbeeh: Int = 0,
     val totalContestsJoined: Int = 0,
     val notificationsEnabled: Boolean = true,
+    val athanSoundEnabled: Boolean = true,
+    val iqamaDelayMinutes: Int = 15,
+    val selectedGovernorate: String = "القاهرة",
     val quranFontSize: Float = 24f,
     val quranLineHeight: Float = 1.8f,
     val readingTheme: ReadingTheme = ReadingTheme.SEPIA,
     val appTheme: AppThemeMode = AppThemeMode.DARK,
-    val avatarIndex: Int = 0
+    val avatarIndex: Int = 0,
+    val lastReadSurahId: Int = 1,
+    val lastReadSurahName: String = "الفاتحة",
+    val lastReadVerseNumber: Int = 1
 )
 
 enum class AppThemeMode {

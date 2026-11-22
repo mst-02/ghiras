@@ -15,6 +15,7 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -28,12 +29,13 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.FormatSize
 import androidx.compose.material.icons.filled.RestartAlt
-import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Shuffle
+import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -84,7 +86,7 @@ import com.islamic.noor.ui.theme.titleColor
 fun TasbeehScreen(
     modifier: Modifier = Modifier,
     userRepository: UserRepository = remember { UserRepository.instance },
-    azkarRepository: AzkarRepository = remember { AzkarRepository() }
+    azkarRepository: AzkarRepository = remember { AzkarRepository.instance }
 ) {
     val context = LocalContext.current
 
@@ -111,11 +113,7 @@ fun TasbeehScreen(
 
     // Bead Size Controller (180dp to 300dp)
     var circleSizeDp by remember { mutableFloatStateOf(240f) }
-    var showSizeSlider by remember { mutableStateOf(false) }
-
-    // Search and select dhikr dialog
-    var showSearchDialog by remember { mutableStateOf(false) }
-    var searchQuery by remember { mutableStateOf("") }
+    var showControllerPanel by remember { mutableStateOf(false) }
 
     val scale by animateFloatAsState(
         targetValue = if (isPressed) 0.94f else 1f,
@@ -144,144 +142,172 @@ fun TasbeehScreen(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.SpaceBetween
     ) {
-        // Top Action Bar (Resize toggle, Dhikr switcher, Reset)
+        // Top Action Bar: زر تحكم مدمج وأنيق على اليسار يجمع التصفير وتغيير الحجم
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                // Search Dhikr Button
-                IconButton(onClick = { showSearchDialog = true }) {
-                    Surface(
-                        shape = CircleShape,
-                        color = GoldChampagne.copy(alpha = 0.2f),
-                        modifier = Modifier.size(38.dp)
-                    ) {
-                        Box(contentAlignment = Alignment.Center) {
-                            Icon(Icons.Default.Search, contentDescription = "بحث واختيار ذكر", tint = GoldDark)
-                        }
-                    }
-                }
-
-                // Randomize Dhikr Button
-                IconButton(onClick = {
-                    val allAvailable = phrases + customAzkar.map { it.arabicText }
-                    currentZekr = allAvailable.random()
-                    count = 0
-                }) {
-                    Surface(
-                        shape = CircleShape,
-                        color = GoldChampagne.copy(alpha = 0.2f),
-                        modifier = Modifier.size(38.dp)
-                    ) {
-                        Box(contentAlignment = Alignment.Center) {
-                            Icon(Icons.Default.Shuffle, contentDescription = "تبديل عشوائي", tint = GoldDark)
-                        }
-                    }
-                }
-
-                // Resize Slider Toggle
-                IconButton(onClick = { showSizeSlider = !showSizeSlider }) {
-                    Surface(
-                        shape = CircleShape,
-                        color = if (showSizeSlider) GoldChampagne else MaterialTheme.colorScheme.surfaceVariant,
-                        modifier = Modifier.size(38.dp)
-                    ) {
-                        Box(contentAlignment = Alignment.Center) {
-                            Icon(Icons.Default.FormatSize, contentDescription = "تعديل الحجم", tint = if (showSizeSlider) EmeraldDeep else MaterialTheme.colorScheme.onSurfaceVariant)
-                        }
-                    }
-                }
-            }
-
-            // Reset Button
+            // Consolidated Left Controller Button (Reset + Bead Size)
             Surface(
                 shape = RoundedCornerShape(12.dp),
-                color = Color(0xFFC62828).copy(alpha = 0.12f),
+                color = if (showControllerPanel) GoldChampagne.copy(alpha = 0.25f) else MaterialTheme.colorScheme.surface,
+                border = androidx.compose.foundation.BorderStroke(1.dp, GoldChampagne.copy(alpha = 0.5f)),
                 modifier = Modifier
                     .clip(RoundedCornerShape(12.dp))
-                    .clickable {
-                        count = 0
-                        totalRounds = 0
-                    }
+                    .clickable { showControllerPanel = !showControllerPanel }
             ) {
                 Row(
-                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 7.dp),
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Icon(
-                        imageVector = Icons.Default.RestartAlt,
-                        contentDescription = "تصفير",
-                        tint = Color(0xFFC62828),
-                        modifier = Modifier.size(16.dp)
+                        imageVector = Icons.Default.Tune,
+                        contentDescription = "التحكم في السبحة",
+                        tint = GoldDark,
+                        modifier = Modifier.size(18.dp)
                     )
-                    Spacer(modifier = Modifier.width(4.dp))
+                    Spacer(modifier = Modifier.width(6.dp))
                     Text(
-                        text = "تصفير",
-                        color = Color(0xFFC62828),
+                        text = "التحكم والتصفير",
+                        color = titleColor(),
                         fontWeight = FontWeight.Bold,
                         fontSize = 12.sp
                     )
                 }
             }
+
+            // Target Indicator
+            Surface(
+                shape = RoundedCornerShape(12.dp),
+                color = EmeraldLight
+            ) {
+                Text(
+                    text = "الهدف: 33 تسبيحة",
+                    color = EmeraldDeep,
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
+                )
+            }
         }
 
-        // Bead Size Slider Panel
-        AnimatedVisibility(visible = showSizeSlider) {
+        // Consolidated Controller Panel (Slider + Quick Reset)
+        AnimatedVisibility(visible = showControllerPanel) {
             Card(
-                shape = RoundedCornerShape(16.dp),
+                shape = RoundedCornerShape(18.dp),
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                elevation = CardDefaults.cardElevation(defaultElevation = 3.dp),
                 border = androidx.compose.foundation.BorderStroke(1.dp, GoldChampagne.copy(alpha = 0.4f)),
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Column(modifier = Modifier.padding(14.dp)) {
+                Column(
+                    modifier = Modifier.padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text(text = "حجم خرزة التسبيح:", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = titleColor())
-                        Text(text = "${circleSizeDp.toInt()}dp", fontSize = 12.sp, color = GoldChampagne, fontWeight = FontWeight.Bold)
+                        Text(
+                            text = "حجم حبة السبحة: ${circleSizeDp.toInt()}dp",
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = titleColor()
+                        )
+
+                        // Reset button inside the controller
+                        Button(
+                            onClick = {
+                                count = 0
+                                totalRounds = 0
+                            },
+                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFC62828)),
+                            shape = RoundedCornerShape(8.dp),
+                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp)
+                        ) {
+                            Icon(Icons.Default.RestartAlt, contentDescription = null, tint = Color.White, modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text("تصفير العداد", color = Color.White, fontSize = 11.sp)
+                        }
                     }
+
                     Slider(
                         value = circleSizeDp,
                         onValueChange = { circleSizeDp = it },
-                        valueRange = 180f..300f,
-                        colors = SliderDefaults.colors(thumbColor = EmeraldDeep, activeTrackColor = EmeraldDeep)
+                        valueRange = 180f..280f,
+                        colors = SliderDefaults.colors(
+                            thumbColor = GoldChampagne,
+                            activeTrackColor = GoldChampagne,
+                            inactiveTrackColor = MaterialTheme.colorScheme.surfaceVariant
+                        )
                     )
                 }
             }
         }
 
-        // Active Dhikr Banner (Clickable to change)
+        // Dhikr Box with Shuffle Button on the Left side!
         Card(
             shape = RoundedCornerShape(20.dp),
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
             elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-            border = androidx.compose.foundation.BorderStroke(1.dp, GoldChampagne.copy(alpha = 0.5f)),
-            modifier = Modifier
-                .fillMaxWidth()
-                .clickable { showSearchDialog = true }
+            border = androidx.compose.foundation.BorderStroke(1.2.dp, GoldChampagne.copy(alpha = 0.6f)),
+            modifier = Modifier.fillMaxWidth()
         ) {
-            Column(
+            Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(16.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
+                    .padding(horizontal = 14.dp, vertical = 14.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(
-                    text = "الذكر الحالي (اضغط لتغييره أو البحث):",
-                    fontSize = 11.sp,
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
-                )
-                Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                    text = currentZekr,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = titleColor(),
-                    textAlign = TextAlign.Center
-                )
+                // Shuffle / Switch Button on the LEFT
+                Surface(
+                    shape = CircleShape,
+                    color = GoldChampagne.copy(alpha = 0.2f),
+                    modifier = Modifier
+                        .size(42.dp)
+                        .clip(CircleShape)
+                        .clickable {
+                            val allAvailable = phrases + customAzkar.map { it.arabicText }
+                            currentZekr = allAvailable.random()
+                            count = 0
+                        }
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Icon(
+                            imageVector = Icons.Default.Shuffle,
+                            contentDescription = "تبديل الذكر",
+                            tint = GoldDark,
+                            modifier = Modifier.size(22.dp)
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.width(10.dp))
+
+                // Dhikr Text (Takes center/remaining space)
+                Column(
+                    modifier = Modifier.weight(1f),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text(
+                        text = "الذكر الحالي:",
+                        fontSize = 11.sp,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                    )
+                    Spacer(modifier = Modifier.height(2.dp))
+                    Text(
+                        text = currentZekr,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = titleColor(),
+                        textAlign = TextAlign.Center
+                    )
+                }
+
+                Spacer(modifier = Modifier.width(42.dp)) // balance spacing with left button
             }
         }
 
@@ -297,10 +323,10 @@ fun TasbeehScreen(
                 modifier = Modifier.padding(4.dp)
             ) {
                 Column(
-                    modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp),
+                    modifier = Modifier.padding(horizontal = 22.dp, vertical = 8.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    Text("الدورات (مجموعات 33)", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f))
+                    Text("الدورات المكتملة", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f))
                     Text("$totalRounds", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = titleColor())
                 }
             }
@@ -312,27 +338,30 @@ fun TasbeehScreen(
                 modifier = Modifier.padding(4.dp)
             ) {
                 Column(
-                    modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp),
+                    modifier = Modifier.padding(horizontal = 22.dp, vertical = 8.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    Text("الهدف الحالي", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f))
-                    Text("33", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = GoldChampagne)
+                    Text("المجموع الكلي", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f))
+                    val userProfile by userRepository.userProfile.collectAsState()
+                    Text("${userProfile.totalTasbeeh}", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = GoldDark)
                 }
             }
         }
 
-        // Luxury Resizable Bead
+        // The Central Interactive Bead
         Box(
-            contentAlignment = Alignment.Center,
             modifier = Modifier
-                .padding(vertical = 12.dp)
                 .size(circleSizeDp.dp)
                 .scale(scale)
-                .shadow(16.dp, CircleShape)
+                .shadow(elevation = 16.dp, shape = CircleShape)
                 .clip(CircleShape)
                 .background(
                     Brush.radialGradient(
-                        colors = listOf(EmeraldMedium, EmeraldDeep)
+                        colors = listOf(
+                            EmeraldLight,
+                            EmeraldMedium,
+                            EmeraldDeep
+                        )
                     )
                 )
                 .border(4.dp, GoldChampagne, CircleShape)
@@ -342,113 +371,35 @@ fun TasbeehScreen(
                 ) {
                     triggerHapticFeedback()
                     count++
-                    userRepository.incrementTasbeehCount()
+                    userRepository.incrementTasbeeh()
+
                     if (count >= 33) {
-                        totalRounds++
                         count = 0
+                        totalRounds++
                     }
-                }
+                },
+            contentAlignment = Alignment.Center
         ) {
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.Center
             ) {
                 Text(
-                    text = count.toString(),
-                    fontSize = (circleSizeDp * 0.28).sp,
+                    text = "$count",
+                    fontSize = (circleSizeDp * 0.28f).sp,
                     fontWeight = FontWeight.ExtraBold,
-                    color = GoldBright,
-                    letterSpacing = 1.sp
+                    color = Color.White
                 )
+                Spacer(modifier = Modifier.height(4.dp))
                 Text(
                     text = "اضغط للتسبيح",
-                    color = Color.White.copy(alpha = 0.85f),
-                    fontSize = (circleSizeDp * 0.055).sp,
+                    fontSize = 12.sp,
+                    color = GoldChampagne,
                     fontWeight = FontWeight.Medium
                 )
             }
         }
 
         Spacer(modifier = Modifier.height(10.dp))
-    }
-
-    // Search & Select Dhikr Dialog
-    if (showSearchDialog) {
-        val allOptions = remember(customAzkar) {
-            (phrases + customAzkar.map { it.arabicText }).distinct()
-        }
-
-        val filteredOptions = remember(searchQuery, allOptions) {
-            if (searchQuery.isBlank()) allOptions
-            else allOptions.filter { it.contains(searchQuery.trim(), ignoreCase = true) }
-        }
-
-        AlertDialog(
-            onDismissRequest = { showSearchDialog = false },
-            title = {
-                Text(text = "اختيار ذكر للسبحة", fontWeight = FontWeight.Bold, color = titleColor())
-            },
-            text = {
-                Column(modifier = Modifier.height(350.dp)) {
-                    OutlinedTextField(
-                        value = searchQuery,
-                        onValueChange = { searchQuery = it },
-                        placeholder = { Text("ابحث عن ذكر...") },
-                        leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, tint = GoldChampagne) },
-                        trailingIcon = {
-                            if (searchQuery.isNotEmpty()) {
-                                IconButton(onClick = { searchQuery = "" }) {
-                                    Icon(Icons.Default.Clear, contentDescription = null)
-                                }
-                            }
-                        },
-                        singleLine = true,
-                        modifier = Modifier.fillMaxWidth()
-                    )
-
-                    Spacer(modifier = Modifier.height(10.dp))
-
-                    LazyColumn(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                        items(filteredOptions) { phrase ->
-                            val isSelected = phrase == currentZekr
-                            Card(
-                                shape = RoundedCornerShape(12.dp),
-                                colors = CardDefaults.cardColors(
-                                    containerColor = if (isSelected) EmeraldLight else MaterialTheme.colorScheme.surface
-                                ),
-                                border = if (isSelected) androidx.compose.foundation.BorderStroke(1.5.dp, EmeraldDeep) else null,
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .clickable {
-                                        currentZekr = phrase
-                                        count = 0
-                                        showSearchDialog = false
-                                    }
-                            ) {
-                                Row(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(12.dp),
-                                    horizontalArrangement = Arrangement.SpaceBetween,
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Text(
-                                        text = phrase,
-                                        fontSize = 13.sp,
-                                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
-                                        color = if (isSelected) EmeraldDeep else MaterialTheme.colorScheme.onSurface
-                                    )
-                                }
-                            }
-                        }
-                    }
-                }
-            },
-            confirmButton = {
-                TextButton(onClick = { showSearchDialog = false }) {
-                    Text("إغلاق", color = titleColor())
-                }
-            }
-        )
     }
 }

@@ -199,40 +199,56 @@ fun ModernAppBottomNav(
     val isContestSelected = currentRoute == Screen.Contest.route
     val isProfileSelected = currentRoute == Screen.Profile.route
 
-    Surface(
-        color = MaterialTheme.colorScheme.surface,
-        shadowElevation = 18.dp,
+    Box(
         modifier = modifier
             .fillMaxWidth()
-            .height(72.dp)
+            .height(86.dp),
+        contentAlignment = Alignment.BottomCenter
     ) {
-        Row(
+        Surface(
+            color = MaterialTheme.colorScheme.surface,
+            shadowElevation = 18.dp,
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 24.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
+                .height(66.dp)
         ) {
-            // 1. المسابقات
-            NavTabItem(
-                icon = Icons.Default.EmojiEvents,
-                label = "المسابقات",
-                isSelected = isContestSelected,
-                onClick = { onNavigate(Screen.Contest.route) }
-            )
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 28.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                // 1. المسابقات
+                NavTabItem(
+                    icon = Icons.Default.EmojiEvents,
+                    label = "المسابقات",
+                    isSelected = isContestSelected,
+                    onClick = { onNavigate(Screen.Contest.route) }
+                )
 
-            // 2. الزر الرئيسي في المنتصف بتصميم بارز وفخم
+                // Placeholder space for the floating center button
+                Spacer(modifier = Modifier.width(68.dp))
+
+                // 3. الإعدادات
+                NavTabItem(
+                    icon = Icons.Default.Settings,
+                    label = "الإعدادات",
+                    isSelected = isProfileSelected,
+                    onClick = { onNavigate(Screen.Profile.route) }
+                )
+            }
+        }
+
+        // 2. الزر الرئيسي في المنتصف يطفو فوق الشريط بكامل بروزه وبدون أي قص
+        Box(
+            modifier = Modifier
+                .align(Alignment.TopCenter)
+                .offset(y = 2.dp)
+        ) {
             CenterFloatingHomeButton(
                 isSelected = isHomeSelected,
                 onClick = { onNavigate(Screen.Home.route) }
-            )
-
-            // 3. الإعدادات
-            NavTabItem(
-                icon = Icons.Default.Settings,
-                label = "الإعدادات",
-                isSelected = isProfileSelected,
-                onClick = { onNavigate(Screen.Profile.route) }
             )
         }
     }
@@ -287,8 +303,7 @@ private fun CenterFloatingHomeButton(
     Box(
         contentAlignment = Alignment.Center,
         modifier = Modifier
-            .offset(y = (-16).dp)
-            .size(72.dp)
+            .size(70.dp)
             .shadow(if (isSelected) 18.dp else 10.dp, CircleShape, spotColor = if (isSelected) GoldBright else EmeraldDeep)
             .clip(CircleShape)
             .background(
