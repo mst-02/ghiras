@@ -48,6 +48,7 @@ import com.islamic.noor.ui.theme.EmeraldDeep
 import com.islamic.noor.ui.theme.EmeraldMedium
 import com.islamic.noor.ui.theme.GoldBright
 import com.islamic.noor.ui.theme.GoldChampagne
+import com.islamic.noor.ui.theme.GoldDark
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
