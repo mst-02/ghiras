@@ -13,12 +13,14 @@ data class GovernorateLocation(
     val name: String,
     val lat: Double,
     val lng: Double,
-    val minuteOffset: Int // فرق الدقائق عن توقيت القاهرة
+    val minuteOffset: Int, // فرق الدقائق عن توقيت القاهرة
+    val isAuto: Boolean = false
 )
 
 class QiblaAndPrayerRepository {
 
     val EGYPT_GOVERNORATES = listOf(
+        GovernorateLocation("تحديد تلقائي عبر الموقع (GPS)", 30.0444, 31.2357, 0, isAuto = true),
         GovernorateLocation("القاهرة", 30.0444, 31.2357, 0),
         GovernorateLocation("الجيزة", 30.0131, 31.2089, 0),
         GovernorateLocation("الإسكندرية", 31.2001, 29.9187, 4),

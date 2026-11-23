@@ -45,10 +45,12 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.islamic.noor.ui.navigation.Screen
 import com.islamic.noor.ui.theme.EmeraldDeep
+import com.islamic.noor.ui.theme.EmeraldLight
 import com.islamic.noor.ui.theme.EmeraldMedium
 import com.islamic.noor.ui.theme.GoldBright
 import com.islamic.noor.ui.theme.GoldChampagne
 import com.islamic.noor.ui.theme.GoldDark
+import com.islamic.noor.ui.theme.isDarkThemeActive
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -120,32 +122,34 @@ fun AppTopBar(
             ) {
                 Text(
                     text = "١٥ جمادى الأولى ١٤٤٨",
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = GoldBright
+                    style = MaterialTheme.typography.labelSmall,
+                    color = GoldBright,
+                    fontWeight = FontWeight.SemiBold
                 )
             }
         },
-        colors = TopAppBarDefaults.topAppBarColors(containerColor = EmeraldDeep),
+        colors = TopAppBarDefaults.topAppBarColors(
+            containerColor = EmeraldDeep,
+            titleContentColor = Color.White,
+            navigationIconContentColor = GoldChampagne,
+            actionIconContentColor = GoldChampagne
+        ),
         modifier = modifier
     )
 }
 
 /**
- * Luxury 8-pointed star Ghiras logo icon with golden accents
+ * Geometric Ghiras Emblem: Islamic 8-pointed star with a golden sprout inside.
  */
 @Composable
 fun GhirasEmblemIcon(modifier: Modifier = Modifier) {
     Canvas(modifier = modifier) {
-        val sizePx = size.minDimension
-        val center = Offset(size.width / 2f, size.height / 2f)
-        val outerRadius = sizePx * 0.48f
-        val innerRadius = sizePx * 0.32f
+        val center = Offset(size.width / 2, size.height / 2)
+        val outerRadius = size.minDimension / 2
+        val innerRadius = outerRadius * 0.58f
 
-        // Draw 8-point geometric star (Rub el Hizb)
         val starPath = Path()
-        val numPoints = 16
-        for (i in 0 until numPoints) {
+        for (i in 0 until 16) {
             val radius = if (i % 2 == 0) outerRadius else innerRadius
             val angle = (i * Math.PI / 8.0) - (Math.PI / 2.0)
             val x = center.x + (radius * Math.cos(angle)).toFloat()
@@ -202,20 +206,20 @@ fun ModernAppBottomNav(
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .height(86.dp),
+            .height(82.dp),
         contentAlignment = Alignment.BottomCenter
     ) {
         Surface(
             color = MaterialTheme.colorScheme.surface,
-            shadowElevation = 18.dp,
+            shadowElevation = 16.dp,
             modifier = Modifier
                 .fillMaxWidth()
-                .height(66.dp)
+                .height(64.dp)
         ) {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 28.dp),
+                    .padding(horizontal = 26.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
@@ -228,7 +232,7 @@ fun ModernAppBottomNav(
                 )
 
                 // Placeholder space for the floating center button
-                Spacer(modifier = Modifier.width(68.dp))
+                Spacer(modifier = Modifier.width(76.dp))
 
                 // 3. الإعدادات
                 NavTabItem(
@@ -240,11 +244,11 @@ fun ModernAppBottomNav(
             }
         }
 
-        // 2. الزر الرئيسي في المنتصف يطفو فوق الشريط بكامل بروزه وبدون أي قص
+        // 2. الزر الرئيسي في المنتصف: مكبّر قليلاً (74dp) ومنزل سنة بسيطة كما طلب المستخدم
         Box(
             modifier = Modifier
                 .align(Alignment.TopCenter)
-                .offset(y = 2.dp)
+                .offset(y = 6.dp)
         ) {
             CenterFloatingHomeButton(
                 isSelected = isHomeSelected,
@@ -261,35 +265,45 @@ private fun NavTabItem(
     isSelected: Boolean,
     onClick: () -> Unit
 ) {
+    val isDark = isDarkThemeActive()
+
+    // تصميم دائري / بيضاوي ناعم بدون خطوط صفراء حادة ومزعجة حسب طلب المستخدم
     Surface(
-        shape = RoundedCornerShape(16.dp),
+        shape = CircleShape,
         color = if (isSelected) {
-            GoldChampagne.copy(alpha = 0.18f)
+            if (isDark) EmeraldMedium.copy(alpha = 0.55f) else EmeraldLight
         } else {
             Color.Transparent
         },
-        border = if (isSelected) androidx.compose.foundation.BorderStroke(1.5.dp, GoldBright.copy(alpha = 0.8f)) else null,
         modifier = Modifier
-            .clip(RoundedCornerShape(16.dp))
+            .clip(CircleShape)
             .clickable { onClick() }
     ) {
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center,
-            modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp)
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 7.dp)
         ) {
             Icon(
                 imageVector = icon,
                 contentDescription = label,
-                tint = if (isSelected) GoldBright else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.45f),
+                tint = if (isSelected) {
+                    if (isDark) GoldBright else EmeraldDeep
+                } else {
+                    MaterialTheme.colorScheme.onSurface.copy(alpha = 0.45f)
+                },
                 modifier = Modifier.size(24.dp)
             )
-            Spacer(modifier = Modifier.height(3.dp))
+            Spacer(modifier = Modifier.height(2.dp))
             Text(
                 text = label,
                 fontSize = 11.sp,
                 fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-                color = if (isSelected) GoldBright else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.55f)
+                color = if (isSelected) {
+                    if (isDark) GoldBright else EmeraldDeep
+                } else {
+                    MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                }
             )
         }
     }
@@ -300,11 +314,13 @@ private fun CenterFloatingHomeButton(
     isSelected: Boolean,
     onClick: () -> Unit
 ) {
+    val isDark = isDarkThemeActive()
+
     Box(
         contentAlignment = Alignment.Center,
         modifier = Modifier
-            .size(70.dp)
-            .shadow(if (isSelected) 18.dp else 10.dp, CircleShape, spotColor = if (isSelected) GoldBright else EmeraldDeep)
+            .size(74.dp) // حجم مريح وواضح
+            .shadow(if (isSelected) 18.dp else 10.dp, CircleShape, spotColor = if (isSelected) (if (isDark) GoldBright else EmeraldDeep) else EmeraldDeep)
             .clip(CircleShape)
             .background(
                 if (isSelected) {
@@ -320,7 +336,7 @@ private fun CenterFloatingHomeButton(
             .border(
                 width = if (isSelected) 3.5.dp else 2.dp,
                 brush = Brush.linearGradient(
-                    colors = if (isSelected) listOf(GoldBright, Color.White, GoldDark) else listOf(GoldChampagne.copy(alpha = 0.7f), EmeraldDeep)
+                    colors = if (isSelected) listOf(GoldBright, Color.White, GoldDark) else listOf(GoldChampagne.copy(alpha = 0.8f), EmeraldDeep)
                 ),
                 shape = CircleShape
             )
@@ -334,7 +350,7 @@ private fun CenterFloatingHomeButton(
                 imageVector = Icons.Default.Mosque,
                 contentDescription = "الرئيسية",
                 tint = if (isSelected) Color.White else GoldChampagne,
-                modifier = Modifier.size(28.dp)
+                modifier = Modifier.size(30.dp)
             )
             Spacer(modifier = Modifier.height(2.dp))
             Text(

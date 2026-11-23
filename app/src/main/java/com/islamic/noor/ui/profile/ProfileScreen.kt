@@ -1,5 +1,8 @@
 package com.islamic.noor.ui.profile
 
+import android.content.Intent
+import android.net.Uri
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -111,6 +114,7 @@ fun ProfileScreen(
     userRepository: UserRepository = remember { UserRepository.instance },
     prayerRepository: QiblaAndPrayerRepository = remember { QiblaAndPrayerRepository() }
 ) {
+    val context = LocalContext.current
     val userProfile by userRepository.userProfile.collectAsState()
 
     var isEditing by remember { mutableStateOf(false) }
@@ -584,64 +588,7 @@ fun ProfileScreen(
             }
         }
 
-        // 5. التحديث التلقائي وإصدار التطبيق (GitHub Integration Status)
-        item(key = "auto_update_section") {
-            Card(
-                shape = RoundedCornerShape(18.dp),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
-                border = BorderStroke(1.dp, GoldChampagne.copy(alpha = 0.4f)),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Surface(
-                            shape = CircleShape,
-                            color = EmeraldLight,
-                            modifier = Modifier.size(40.dp)
-                        ) {
-                            Box(contentAlignment = Alignment.Center) {
-                                Icon(
-                                    imageVector = Icons.Default.Sync,
-                                    contentDescription = null,
-                                    tint = EmeraldDeep,
-                                    modifier = Modifier.size(22.dp)
-                                )
-                            }
-                        }
-                        Spacer(modifier = Modifier.width(12.dp))
-                        Column {
-                            Text(
-                                text = "تحديثات غِراس المباشرة",
-                                fontWeight = FontWeight.Bold,
-                                color = titleColor()
-                            )
-                            Text(
-                                text = "الإصدار v1.2.0 • متزامن مع مستودع GitHub",
-                                fontSize = 11.sp,
-                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
-                            )
-                        }
-                    }
-
-                    Button(
-                        onClick = { showUpdateSuccessDialog = true },
-                        colors = ButtonDefaults.buttonColors(containerColor = EmeraldDeep),
-                        shape = RoundedCornerShape(10.dp)
-                    ) {
-                        Text("التحقق", color = Color.White, fontSize = 11.sp)
-                    }
-                }
-            }
-        }
-
-        // 6. Legal, FAQ, and About Us (من نحن في الآخر كما طلب)
+        // 5. Legal, FAQ, and About Us (من نحن في الآخر كما طلب)
         item(key = "legal_and_about") {
             Card(
                 shape = RoundedCornerShape(18.dp),
@@ -806,14 +753,58 @@ fun ProfileScreen(
                 )
             },
             confirmButton = {
-                Button(
-                    onClick = {
-                        activeDialogTitle = null
-                        activeDialogContent = null
-                    },
-                    colors = ButtonDefaults.buttonColors(containerColor = buttonAdaptiveColor())
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text("إغلاق", color = Color.White)
+                    if (activeDialogTitle == "من نحن") {
+                        // زر التحديث التلقائي المطلوب داخل "من نحن"
+                        Surface(
+                            shape = RoundedCornerShape(10.dp),
+                            color = EmeraldDeep,
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(10.dp))
+                                .clickable {
+                                    val browserIntent = Intent(
+                                        Intent.ACTION_VIEW,
+                                        Uri.parse("https://github.com/mst-02/ghiras/releases/latest")
+                                    )
+                                    context.startActivity(browserIntent)
+                                }
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Sync,
+                                    contentDescription = null,
+                                    tint = GoldBright,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text(
+                                    text = "تحديث التطبيق",
+                                    color = Color.White,
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                        }
+                    } else {
+                        Spacer(modifier = Modifier.width(1.dp))
+                    }
+
+                    Button(
+                        onClick = {
+                            activeDialogTitle = null
+                            activeDialogContent = null
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = buttonAdaptiveColor())
+                    ) {
+                        Text("إغلاق", color = Color.White)
+                    }
                 }
             }
         )

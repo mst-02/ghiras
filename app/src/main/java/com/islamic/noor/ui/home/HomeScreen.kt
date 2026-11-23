@@ -107,49 +107,32 @@ fun HomeScreen(
                 Column(modifier = Modifier.padding(18.dp)) {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Surface(
-                                shape = CircleShape,
-                                color = GoldChampagne.copy(alpha = 0.2f),
-                                modifier = Modifier.size(36.dp)
-                            ) {
-                                Box(contentAlignment = Alignment.Center) {
-                                    Icon(
-                                        imageVector = Icons.Default.WbSunny,
-                                        contentDescription = null,
-                                        tint = GoldBright,
-                                        modifier = Modifier.size(20.dp)
-                                    )
-                                }
-                            }
-                            Spacer(modifier = Modifier.width(10.dp))
-                            Text(
-                                text = "دعاء اليوم المبارك",
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Bold,
-                                color = titleColor()
-                            )
-                        }
-
-                        // Category chip
                         Surface(
-                            shape = RoundedCornerShape(8.dp),
-                            color = EmeraldLight
+                            shape = CircleShape,
+                            color = GoldChampagne.copy(alpha = 0.2f),
+                            modifier = Modifier.size(36.dp)
                         ) {
-                            Text(
-                                text = "سنة نبوية",
-                                color = EmeraldDeep,
-                                fontSize = 10.sp,
-                                fontWeight = FontWeight.Bold,
-                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
-                            )
+                            Box(contentAlignment = Alignment.Center) {
+                                Icon(
+                                    imageVector = Icons.Default.WbSunny,
+                                    contentDescription = null,
+                                    tint = GoldBright,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            }
                         }
+                        Spacer(modifier = Modifier.width(10.dp))
+                        Text(
+                            text = "دعاء اليوم المبارك",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = titleColor()
+                        )
                     }
 
-                    Spacer(modifier = Modifier.height(12.dp))
+                    Spacer(modifier = Modifier.height(14.dp))
 
                     Text(
                         text = "«اللَّهُمَّ إِنِّي أَسْأَلُكَ عِلْمًا نَافِعًا، وَرِزْقًا طَيِّبًا، وَعَمَلًا مُتَقَبَّلًا»",
@@ -161,12 +144,11 @@ fun HomeScreen(
                         textAlign = TextAlign.Start
                     )
 
-                    Spacer(modifier = Modifier.height(12.dp))
+                    Spacer(modifier = Modifier.height(14.dp))
 
-                    // علامة القراءة أسفل اليسار كما طُلب
+                    // علامة القراءة فقط أسفل البطاقة بكل وضوح
                     Row(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         if (isDuaRead) {
@@ -175,12 +157,12 @@ fun HomeScreen(
                                     imageVector = Icons.Default.CheckCircle,
                                     contentDescription = null,
                                     tint = Color(0xFF2E7D32),
-                                    modifier = Modifier.size(16.dp)
+                                    modifier = Modifier.size(18.dp)
                                 )
-                                Spacer(modifier = Modifier.width(4.dp))
+                                Spacer(modifier = Modifier.width(6.dp))
                                 Text(
                                     text = "تمت قراءة الدعاء بحمد الله",
-                                    fontSize = 11.sp,
+                                    fontSize = 12.sp,
                                     fontWeight = FontWeight.Bold,
                                     color = Color(0xFF2E7D32)
                                 )
@@ -188,16 +170,10 @@ fun HomeScreen(
                         } else {
                             Text(
                                 text = "اضغط على البطاقة لتأكيد القراءة",
-                                fontSize = 11.sp,
-                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
+                                fontSize = 12.sp,
+                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.55f)
                             )
                         }
-
-                        Text(
-                            text = "سنن ابن ماجه",
-                            fontSize = 11.sp,
-                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
-                        )
                     }
                 }
             }

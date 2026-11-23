@@ -26,9 +26,10 @@ val SurfaceLight = Color(0xFFFFFFFF)
 val BackgroundLight = Color(0xFFF6F8F7)
 val CardBorderLight = Color(0xFFE2EBE6)
 
+// High-contrast Light Mode Text (Deep, Crisp, Clear)
 val TextPrimary = Color(0xFF14211D)
-val TextSecondary = Color(0xFF53665F)
-val TextMuted = Color(0xFF869991)
+val TextSecondary = Color(0xFF3B4D46)
+val TextMuted = Color(0xFF6B7F77)
 val TextPrimaryLight = TextPrimary
 
 // High-contrast Dark Theme Colors (Clean & Ultra-Readable)
@@ -45,7 +46,7 @@ val QuranTextSepia = Color(0xFF231F1A)
 val QuranBgDark = Color(0xFF131816)
 val QuranTextDark = Color(0xFFE2E7E4)
 
-// Adaptive Helpers for Guaranteed High-Contrast
+// Adaptive Helpers for Guaranteed High-Contrast in both Light & Dark modes
 @Composable
 fun titleColor(): Color = if (isDarkThemeActive()) GoldBright else EmeraldDeep
 
@@ -66,6 +67,19 @@ fun iconAdaptiveColor(): Color = if (isDarkThemeActive()) GoldChampagne else Eme
 
 @Composable
 fun buttonAdaptiveColor(): Color = if (isDarkThemeActive()) EmeraldMedium else EmeraldDeep
+
+// Accent color that is Gold in Dark mode, but deep rich emerald in Light mode (avoids washed-out yellow)
+@Composable
+fun accentAdaptiveColor(): Color = if (isDarkThemeActive()) GoldBright else EmeraldDeep
+
+@Composable
+fun accentSecondaryAdaptiveColor(): Color = if (isDarkThemeActive()) GoldChampagne else Color(0xFF135A47)
+
+@Composable
+fun tagBackgroundColor(): Color = if (isDarkThemeActive()) EmeraldMedium.copy(alpha = 0.5f) else Color(0xFFE2EFE9)
+
+@Composable
+fun tagTextColor(): Color = if (isDarkThemeActive()) GoldBright else EmeraldDeep
 
 @Composable
 fun isDarkThemeActive(): Boolean = MaterialTheme.colorScheme.background == BackgroundDark
