@@ -61,6 +61,12 @@ class UserRepository {
         )
     }
 
+    fun resetTasbeeh() {
+        _userProfile.value = _userProfile.value.copy(
+            totalTasbeeh = 0
+        )
+    }
+
     fun incrementTasbeehCount() = incrementTasbeeh()
 
     fun incrementContestsJoined() {

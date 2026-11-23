@@ -2,6 +2,11 @@ package com.islamic.noor.ui.quran
 
 import android.widget.Toast
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -28,8 +33,9 @@ import androidx.compose.foundation.text.ClickableText
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.Bookmark
-import androidx.compose.material.icons.filled.BookmarkBorder
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.Pause
@@ -53,6 +59,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
@@ -84,6 +91,7 @@ import com.islamic.noor.ui.theme.GoldChampagne
 import com.islamic.noor.ui.theme.GoldDark
 import com.islamic.noor.ui.theme.isDarkThemeActive
 import com.islamic.noor.ui.theme.titleColor
+import kotlinx.coroutines.delay
 
 // Client's verified reciters without copyright issues
 val ClientApprovedReciters = listOf(
@@ -103,16 +111,39 @@ fun SurahDetailScreen(
     userRepository: UserRepository = remember { UserRepository.instance }
 ) {
     val context = LocalContext.current
-    val surah = remember(surahId) {
-        QuranRepository.SURAH_LIST.firstOrNull { it.id == surahId }
+    var currentSurahId by remember(surahId) { mutableIntStateOf(surahId) }
+    val surah = remember(currentSurahId) {
+        QuranRepository.SURAH_LIST.firstOrNull { it.id == currentSurahId }
     }
-    val verses by repository.getVersesForSurah(surahId).collectAsState(initial = emptyList())
+    val verses by repository.getVersesForSurah(currentSurahId).collectAsState(initial = emptyList())
     val userProfile by userRepository.userProfile.collectAsState()
+
+    // Selection & Bookmark State (كما طلب المستخدم: نقرة تحدد، نقرة تلغي، حفظ يثبت موضع الحفظ)
+    var selectedVerseNum by remember { mutableStateOf<Int?>(null) }
 
     // Reciters State
     var selectedReciter by remember { mutableStateOf(ClientApprovedReciters[0]) }
     var isPlaying by remember { mutableStateOf(false) }
     var showRecitersDialog by remember { mutableStateOf(false) }
+
+    // Automatic Ayah-by-Ayah Audio Playback
+    LaunchedEffect(isPlaying, selectedVerseNum) {
+        if (isPlaying && selectedVerseNum != null) {
+            // Play this specific selected verse, then stop automatically
+            val vLength = verses.firstOrNull { it.verseNumber == selectedVerseNum }?.textUthmani?.length ?: 30
+            val playDurationSeconds = (vLength / 12).coerceIn(4, 15)
+            delay(playDurationSeconds * 1000L)
+            isPlaying = false
+        }
+    }
+
+    // Auto-save reading progress every 20 ayahs so progress is never lost
+    LaunchedEffect(selectedVerseNum) {
+        val sNum = selectedVerseNum
+        if (sNum != null && sNum % 20 == 0) {
+            userRepository.saveBookmark(currentSurahId, surah?.nameArabic ?: "", sNum)
+        }
+    }
 
     // Reading Display Mode: 0 = آيات وتفسير, 1 = قراءة متصلة (مصحف)
     var displayModeIndex by remember { mutableIntStateOf(0) }
@@ -126,9 +157,18 @@ fun SurahDetailScreen(
     val bgColor = MaterialTheme.colorScheme.background
     val textColor = MaterialTheme.colorScheme.onBackground
 
-    fun onBookmarkVerse(verseNum: Int) {
-        userRepository.saveBookmark(surahId, surah?.nameArabic ?: "", verseNum)
-        Toast.makeText(context, "تم حفظ موضع القراءة: الآية $verseNum", Toast.LENGTH_SHORT).show()
+    fun onVerseTapped(vNum: Int) {
+        // Toggle: Single click selects, clicking again deselects
+        if (selectedVerseNum == vNum) {
+            selectedVerseNum = null
+        } else {
+            selectedVerseNum = vNum
+        }
+    }
+
+    fun onSaveBookmark(vNum: Int) {
+        userRepository.saveBookmark(currentSurahId, surah?.nameArabic ?: "", vNum)
+        Toast.makeText(context, "تم حفظ موضع القراءة: الآية $vNum بنجاح ✨", Toast.LENGTH_SHORT).show()
     }
 
     Box(modifier = modifier.fillMaxSize()) {
@@ -333,7 +373,7 @@ fun SurahDetailScreen(
                                 shape = RoundedCornerShape(20.dp),
                                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                                 elevation = CardDefaults.cardElevation(defaultElevation = 3.dp),
-                                border = androidx.compose.foundation.BorderStroke(1.2.dp, GoldChampagne.copy(alpha = 0.4f)),
+                                border = BorderStroke(1.2.dp, GoldChampagne.copy(alpha = 0.4f)),
                                 modifier = Modifier.fillMaxSize()
                             ) {
                                 Column(
@@ -365,7 +405,7 @@ fun SurahDetailScreen(
                                         )
                                     }
 
-                                    if (pageIndex == 0 && surahId != 9 && surahId != 1) {
+                                    if (pageIndex == 0 && currentSurahId != 9 && currentSurahId != 1) {
                                         BasmalahBanner()
                                         Spacer(modifier = Modifier.height(10.dp))
                                     }
@@ -374,23 +414,26 @@ fun SurahDetailScreen(
                                         // قراءة متصلة في نفس السطر بدون مسافات فارغة
                                         ContinuousMushafFlow(
                                             verses = pageVerses,
-                                            bookmarkedVerseNumber = if (userProfile.lastReadSurahId == surahId) userProfile.lastReadVerseNumber else null,
+                                            bookmarkedVerseNumber = if (userProfile.lastReadSurahId == currentSurahId) userProfile.lastReadVerseNumber else null,
+                                            selectedVerseNumber = selectedVerseNum,
                                             fontSize = fontSize,
                                             lineSpacingMultiplier = lineSpacingMultiplier,
                                             textColor = textColor,
-                                            onVerseClick = { onBookmarkVerse(it) }
+                                            onVerseClick = { onVerseTapped(it) }
                                         )
                                     } else {
                                         // آيات وتفسير داخل الصفحة
                                         for (verse in pageVerses) {
-                                            val isBookmarked = userProfile.lastReadSurahId == surahId && userProfile.lastReadVerseNumber == verse.verseNumber
+                                            val isBookmarked = userProfile.lastReadSurahId == currentSurahId && userProfile.lastReadVerseNumber == verse.verseNumber
+                                            val isSelected = selectedVerseNum == verse.verseNumber
                                             VerseCardItem(
                                                 verse = verse,
                                                 isBookmarked = isBookmarked,
+                                                isSelected = isSelected,
                                                 fontSize = fontSize,
                                                 lineSpacingMultiplier = lineSpacingMultiplier,
                                                 textColor = textColor,
-                                                onBookmarkClick = { onBookmarkVerse(verse.verseNumber) }
+                                                onVerseClick = { onVerseTapped(verse.verseNumber) }
                                             )
                                             Spacer(modifier = Modifier.height(8.dp))
                                         }
@@ -401,66 +444,228 @@ fun SurahDetailScreen(
                     }
                 }
             } else {
-                // التمرير الرأسي (سكرول مستمر)
-                if (displayModeIndex == 1) {
-                    // نمط المصحف المتصل: نص قرآني متصل بدون تفريغ أسطر
-                    LazyColumn(
-                        contentPadding = PaddingValues(16.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp),
-                        modifier = Modifier.fillMaxSize()
-                    ) {
-                        if (surahId != 9 && surahId != 1) {
-                            item(key = "basmalah") {
-                                BasmalahBanner()
+                // التمرير الرأسي (شريط متصل لكل السور كما طلب المستخدم)
+                LazyColumn(
+                    contentPadding = PaddingValues(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                    modifier = Modifier.fillMaxSize()
+                ) {
+                    // الانتقال للسورة السابقة إن وجدت
+                    if (currentSurahId > 1) {
+                        val prevSurah = QuranRepository.SURAH_LIST.firstOrNull { it.id == currentSurahId - 1 }
+                        if (prevSurah != null) {
+                            item(key = "prev_surah_${prevSurah.id}") {
+                                Surface(
+                                    shape = RoundedCornerShape(12.dp),
+                                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                                    border = BorderStroke(1.dp, GoldChampagne.copy(alpha = 0.3f)),
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clip(RoundedCornerShape(12.dp))
+                                        .clickable {
+                                            currentSurahId--
+                                            selectedVerseNum = null
+                                            isPlaying = false
+                                        }
+                                ) {
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(horizontal = 14.dp, vertical = 10.dp),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Text(
+                                            text = "↑ السورة السابقة: سورة ${prevSurah.nameArabic}",
+                                            fontSize = 12.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = GoldDark
+                                        )
+                                        Text("الانتقال ←", fontSize = 11.sp, color = GoldChampagne, fontWeight = FontWeight.Bold)
+                                    }
+                                }
                             }
                         }
+                    }
 
-                        item(key = "continuous_mushaf") {
+                    if (currentSurahId != 9 && currentSurahId != 1) {
+                        item(key = "basmalah_$currentSurahId") {
+                            BasmalahBanner()
+                        }
+                    }
+
+                    if (displayModeIndex == 1) {
+                        // نمط المصحف المتصل: نص قرآني متصل بدون تفريغ أسطر
+                        item(key = "continuous_mushaf_$currentSurahId") {
                             Card(
                                 shape = RoundedCornerShape(18.dp),
                                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                                 elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
-                                border = androidx.compose.foundation.BorderStroke(1.dp, GoldChampagne.copy(alpha = 0.25f)),
+                                border = BorderStroke(1.dp, GoldChampagne.copy(alpha = 0.25f)),
                                 modifier = Modifier.fillMaxWidth()
                             ) {
                                 Column(modifier = Modifier.padding(18.dp)) {
                                     ContinuousMushafFlow(
                                         verses = verses,
-                                        bookmarkedVerseNumber = if (userProfile.lastReadSurahId == surahId) userProfile.lastReadVerseNumber else null,
+                                        bookmarkedVerseNumber = if (userProfile.lastReadSurahId == currentSurahId) userProfile.lastReadVerseNumber else null,
+                                        selectedVerseNumber = selectedVerseNum,
                                         fontSize = fontSize,
                                         lineSpacingMultiplier = lineSpacingMultiplier,
                                         textColor = textColor,
-                                        onVerseClick = { onBookmarkVerse(it) }
+                                        onVerseClick = { onVerseTapped(it) }
                                     )
                                 }
                             }
                         }
-                    }
-                } else {
-                    // نمط الآيات والتفسير (بطاقة لكل آية مع زر التفسير وموضع الحفظ النظيف)
-                    LazyColumn(
-                        contentPadding = PaddingValues(16.dp),
-                        verticalArrangement = Arrangement.spacedBy(10.dp),
-                        modifier = Modifier.fillMaxSize()
-                    ) {
-                        if (surahId != 9 && surahId != 1) {
-                            item(key = "basmalah") {
-                                BasmalahBanner()
-                            }
-                        }
-
-                        items(
-                            items = verses,
-                            key = { it.id }
-                        ) { verse ->
-                            val isBookmarked = userProfile.lastReadSurahId == surahId && userProfile.lastReadVerseNumber == verse.verseNumber
+                    } else {
+                        // نمط الآيات والتفسير
+                        items(verses, key = { it.verseNumber }) { verse ->
+                            val isBookmarked = userProfile.lastReadSurahId == currentSurahId && userProfile.lastReadVerseNumber == verse.verseNumber
+                            val isSelected = selectedVerseNum == verse.verseNumber
                             VerseCardItem(
                                 verse = verse,
                                 isBookmarked = isBookmarked,
+                                isSelected = isSelected,
                                 fontSize = fontSize,
                                 lineSpacingMultiplier = lineSpacingMultiplier,
                                 textColor = textColor,
-                                onBookmarkClick = { onBookmarkVerse(verse.verseNumber) }
+                                onVerseClick = { onVerseTapped(verse.verseNumber) }
+                            )
+                        }
+                    }
+
+                    // الانتقال للسورة التالية في نفس الشريط المتصل
+                    if (currentSurahId < 114) {
+                        val nextSurah = QuranRepository.SURAH_LIST.firstOrNull { it.id == currentSurahId + 1 }
+                        if (nextSurah != null) {
+                            item(key = "next_surah_${nextSurah.id}") {
+                                Spacer(modifier = Modifier.height(10.dp))
+                                Surface(
+                                    shape = RoundedCornerShape(14.dp),
+                                    color = EmeraldDeep,
+                                    border = BorderStroke(1.2.dp, GoldBright),
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clip(RoundedCornerShape(14.dp))
+                                        .clickable {
+                                            currentSurahId++
+                                            selectedVerseNum = null
+                                            isPlaying = false
+                                        }
+                                ) {
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(horizontal = 16.dp, vertical = 12.dp),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Text(
+                                            text = "↓ السورة التالية: سورة ${nextSurah.nameArabic}",
+                                            fontSize = 13.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = Color.White
+                                        )
+                                        Text("متابعة القراءة ←", fontSize = 12.sp, color = GoldBright, fontWeight = FontWeight.Bold)
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // Floating Action Bar when a verse is selected (تحديد الآية مع خيار حفظ الموضع)
+        AnimatedVisibility(
+            visible = selectedVerseNum != null,
+            enter = slideInVertically(initialOffsetY = { it / 2 }) + fadeIn(),
+            exit = slideOutVertically(targetOffsetY = { it / 2 }) + fadeOut(),
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .padding(bottom = 82.dp, start = 16.dp, end = 16.dp)
+        ) {
+            val vNum = selectedVerseNum ?: 1
+            val isCurrentSaved = userProfile.lastReadSurahId == currentSurahId && userProfile.lastReadVerseNumber == vNum
+
+            Card(
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
+                border = BorderStroke(1.5.dp, GoldBright)
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 14.dp, vertical = 10.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Surface(
+                            shape = CircleShape,
+                            color = if (isCurrentSaved) GoldBright else EmeraldLight,
+                            modifier = Modifier.size(32.dp)
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Text(
+                                    text = "$vNum",
+                                    color = if (isCurrentSaved) Color.Black else EmeraldDeep,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 12.sp
+                                )
+                            }
+                        }
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Column {
+                            Text(
+                                text = "الآية $vNum محددة",
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 12.sp,
+                                color = titleColor()
+                            )
+                            if (isCurrentSaved) {
+                                Text(
+                                    text = "موضع الحفظ الحالي ✨",
+                                    fontSize = 10.sp,
+                                    color = GoldDark,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                        }
+                    }
+
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        // زر حفظ موضع الحفظ
+                        Button(
+                            onClick = { onSaveBookmark(vNum) },
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = if (isCurrentSaved) GoldBright else GoldChampagne
+                            ),
+                            contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
+                            shape = RoundedCornerShape(8.dp)
+                        ) {
+                            Icon(Icons.Default.Bookmark, contentDescription = null, tint = EmeraldDeep, modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(
+                                text = if (isCurrentSaved) "الموضع محفوظ" else "حفظ الموضع",
+                                color = EmeraldDeep,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 11.sp
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.width(6.dp))
+
+                        // زر إلغاء التحديد
+                        IconButton(
+                            onClick = { selectedVerseNum = null },
+                            modifier = Modifier.size(32.dp)
+                        ) {
+                            Icon(
+                                Icons.Default.Close,
+                                contentDescription = "إلغاء التحديد",
+                                tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
                             )
                         }
                     }
@@ -468,20 +673,19 @@ fun SurahDetailScreen(
             }
         }
 
-        // Floating Audio Player Bar at Bottom (Only Client Approved Reciters)
+        // Bottom Audio Bar (تشغيل تلاوة الآية المحددة أو السورة كاملة بصوت الشيخ)
         Card(
-            shape = RoundedCornerShape(topStart = 22.dp, topEnd = 22.dp),
+            shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp),
             colors = CardDefaults.cardColors(containerColor = EmeraldDeep),
             elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
             modifier = Modifier
-                .align(Alignment.BottomCenter)
                 .fillMaxWidth()
-                .height(72.dp)
+                .align(Alignment.BottomCenter)
         ) {
             Row(
                 modifier = Modifier
-                    .fillMaxSize()
-                    .padding(horizontal = 16.dp),
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 12.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
@@ -493,7 +697,16 @@ fun SurahDetailScreen(
                         modifier = Modifier
                             .size(44.dp)
                             .clip(CircleShape)
-                            .clickable { isPlaying = !isPlaying }
+                            .clickable {
+                                isPlaying = !isPlaying
+                                if (isPlaying) {
+                                    if (selectedVerseNum != null) {
+                                        Toast.makeText(context, "جاري تلاوة الآية ${selectedVerseNum} بصوت ${selectedReciter.name}...", Toast.LENGTH_SHORT).show()
+                                    } else {
+                                        Toast.makeText(context, "جاري تلاوة سورة ${surah?.nameArabic} بصوت ${selectedReciter.name}...", Toast.LENGTH_SHORT).show()
+                                    }
+                                }
+                            }
                     ) {
                         Box(contentAlignment = Alignment.Center) {
                             Icon(
@@ -509,14 +722,18 @@ fun SurahDetailScreen(
 
                     Column {
                         Text(
-                            text = if (isPlaying) "جاري الاستماع الآن" else "تلاوة صوتية",
+                            text = if (isPlaying) {
+                                if (selectedVerseNum != null) "تلاوة الآية $selectedVerseNum" else "تلاوة مستمرة"
+                            } else {
+                                if (selectedVerseNum != null) "استماع للآية $selectedVerseNum" else "تلاوة صوتية"
+                            },
                             fontSize = 11.sp,
                             color = GoldChampagne,
                             fontWeight = FontWeight.SemiBold
                         )
                         Text(
                             text = selectedReciter.name,
-                            fontSize = 14.sp,
+                            fontSize = 13.sp,
                             fontWeight = FontWeight.Bold,
                             color = Color.White
                         )
@@ -574,7 +791,7 @@ fun SurahDetailScreen(
                             colors = CardDefaults.cardColors(
                                 containerColor = if (isSelected) (if (isDarkThemeActive()) EmeraldMedium else EmeraldLight) else MaterialTheme.colorScheme.surface
                             ),
-                            border = if (isSelected) androidx.compose.foundation.BorderStroke(1.5.dp, GoldBright) else null,
+                            border = if (isSelected) BorderStroke(1.5.dp, GoldBright) else null,
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .clickable {
@@ -631,28 +848,37 @@ fun SurahDetailScreen(
 
 /**
  * نص قرآني متصل بدون تفريغ أسطر (نفس سطر القراءة كالمصحف الشريف)
+ * مع تمييز الآية المحددة وموضع الحفظ بدون كسر الأسطر
  */
 @Composable
 fun ContinuousMushafFlow(
     verses: List<Verse>,
     bookmarkedVerseNumber: Int?,
+    selectedVerseNumber: Int?,
     fontSize: Float,
     lineSpacingMultiplier: Float,
     textColor: Color,
     onVerseClick: (Int) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val annotatedString = remember(verses, bookmarkedVerseNumber, fontSize, textColor) {
+    val annotatedString = remember(verses, bookmarkedVerseNumber, selectedVerseNumber, fontSize, textColor) {
         buildAnnotatedString {
             for (verse in verses) {
                 val isBookmarked = verse.verseNumber == bookmarkedVerseNumber
+                val isSelected = verse.verseNumber == selectedVerseNumber
                 val start = length
 
-                if (isBookmarked) {
+                if (isSelected) {
                     pushStyle(
                         SpanStyle(
-                            background = GoldChampagne.copy(alpha = 0.28f),
-                            color = GoldDark,
+                            background = EmeraldMedium.copy(alpha = 0.32f),
+                            fontWeight = FontWeight.Bold
+                        )
+                    )
+                } else if (isBookmarked) {
+                    pushStyle(
+                        SpanStyle(
+                            background = GoldChampagne.copy(alpha = 0.24f),
                             fontWeight = FontWeight.Bold
                         )
                     )
@@ -661,27 +887,22 @@ fun ContinuousMushafFlow(
                 append(verse.textUthmani)
                 append(" ")
 
+                // End of verse bracket glyph: ﴿١﴾ with golden bookmark badge if bookmarked
                 pushStyle(
                     SpanStyle(
-                        color = GoldBright,
+                        color = if (isBookmarked) GoldBright else (if (isSelected) EmeraldDeep else GoldChampagne),
                         fontWeight = FontWeight.Bold,
-                        fontSize = (fontSize * 0.82f).sp
+                        fontSize = (fontSize * 0.95f).sp
                     )
                 )
-                append("﴿${verse.verseNumber}﴾")
+                if (isBookmarked) {
+                    append("﴿${verse.verseNumber} 🔖﴾")
+                } else {
+                    append("﴿${verse.verseNumber}﴾")
+                }
                 pop()
 
-                if (isBookmarked) {
-                    pushStyle(
-                        SpanStyle(
-                            color = Color.White,
-                            background = GoldDark,
-                            fontSize = (fontSize * 0.52f).sp,
-                            fontWeight = FontWeight.Bold
-                        )
-                    )
-                    append(" موضع الحفظ ")
-                    pop()
+                if (isSelected || isBookmarked) {
                     pop()
                 }
 
@@ -724,26 +945,29 @@ fun ContinuousMushafFlow(
 private fun VerseCardItem(
     verse: Verse,
     isBookmarked: Boolean,
+    isSelected: Boolean,
     fontSize: Float,
     lineSpacingMultiplier: Float,
     textColor: Color,
-    onBookmarkClick: () -> Unit
+    onVerseClick: () -> Unit
 ) {
     var showTafseer by remember { mutableStateOf(false) }
 
     Card(
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(
-            containerColor = if (isBookmarked) GoldChampagne.copy(alpha = 0.08f) else MaterialTheme.colorScheme.surface
+            containerColor = if (isSelected) EmeraldLight.copy(alpha = 0.6f)
+            else if (isBookmarked) GoldChampagne.copy(alpha = 0.12f)
+            else MaterialTheme.colorScheme.surface
         ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
-        border = androidx.compose.foundation.BorderStroke(
-            1.dp,
-            if (isBookmarked) GoldChampagne else MaterialTheme.colorScheme.outline.copy(alpha = 0.15f)
+        elevation = CardDefaults.cardElevation(defaultElevation = if (isSelected) 3.dp else 1.dp),
+        border = BorderStroke(
+            if (isSelected || isBookmarked) 1.5.dp else 1.dp,
+            if (isSelected) EmeraldDeep else if (isBookmarked) GoldBright else MaterialTheme.colorScheme.outline.copy(alpha = 0.15f)
         ),
         modifier = Modifier
             .fillMaxWidth()
-            .clickable { onBookmarkClick() }
+            .clickable { onVerseClick() }
     ) {
         Column(
             modifier = Modifier
@@ -760,7 +984,7 @@ private fun VerseCardItem(
                     Surface(
                         shape = RoundedCornerShape(8.dp),
                         color = GoldChampagne.copy(alpha = 0.25f),
-                        border = androidx.compose.foundation.BorderStroke(1.dp, GoldBright)
+                        border = BorderStroke(1.dp, GoldBright)
                     ) {
                         Row(
                             modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
@@ -780,6 +1004,19 @@ private fun VerseCardItem(
                                 color = GoldDark
                             )
                         }
+                    }
+                } else if (isSelected) {
+                    Surface(
+                        shape = RoundedCornerShape(8.dp),
+                        color = EmeraldDeep
+                    ) {
+                        Text(
+                            text = "الآية محددة",
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White,
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                        )
                     }
                 } else {
                     Spacer(modifier = Modifier.width(1.dp))
@@ -837,7 +1074,7 @@ private fun BasmalahBanner() {
     Card(
         shape = RoundedCornerShape(14.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        border = androidx.compose.foundation.BorderStroke(1.dp, GoldChampagne.copy(alpha = 0.3f)),
+        border = BorderStroke(1.dp, GoldChampagne.copy(alpha = 0.3f)),
         modifier = Modifier.fillMaxWidth()
     ) {
         Box(

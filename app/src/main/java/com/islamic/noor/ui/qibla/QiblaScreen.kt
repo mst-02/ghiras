@@ -171,144 +171,7 @@ fun QiblaScreen(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        // 1. Governorate Selector Bar + GPS button
-        item(key = "location_bar") {
-            Card(
-                shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-                border = androidx.compose.foundation.BorderStroke(1.2.dp, GoldChampagne.copy(alpha = 0.6f)),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Box(modifier = Modifier.fillMaxWidth()) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable { showGovDropdown = true }
-                            .padding(horizontal = 16.dp, vertical = 12.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Surface(
-                                shape = CircleShape,
-                                color = EmeraldLight,
-                                modifier = Modifier.size(36.dp)
-                            ) {
-                                Box(contentAlignment = Alignment.Center) {
-                                    Icon(
-                                        imageVector = Icons.Default.LocationOn,
-                                        contentDescription = null,
-                                        tint = EmeraldDeep,
-                                        modifier = Modifier.size(20.dp)
-                                    )
-                                }
-                            }
-                            Spacer(modifier = Modifier.width(10.dp))
-                            Column {
-                                Text(
-                                    text = "الموقع: ${selectedGov.name}",
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = 14.sp,
-                                    color = titleColor()
-                                )
-                                Text(
-                                    text = "زاوية القبلة: ${qiblaAngle.toInt()}° من الشمال",
-                                    fontSize = 11.sp,
-                                    color = GoldDark
-                                )
-                            }
-                        }
-
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            // زر تحديد تلقائي مباشر (GPS Auto)
-                            Surface(
-                                shape = RoundedCornerShape(8.dp),
-                                color = if (selectedGov.name.contains("GPS") || selectedGov.name.contains("تلقائي")) EmeraldDeep else EmeraldLight,
-                                modifier = Modifier
-                                    .clip(RoundedCornerShape(8.dp))
-                                    .clickable {
-                                        userRepository.setGovernorate("تحديد تلقائي عبر الموقع (GPS)")
-                                    }
-                            ) {
-                                Row(
-                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 5.dp),
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Icon(
-                                        Icons.Default.MyLocation,
-                                        contentDescription = null,
-                                        tint = if (selectedGov.name.contains("GPS") || selectedGov.name.contains("تلقائي")) Color.White else EmeraldDeep,
-                                        modifier = Modifier.size(13.dp)
-                                    )
-                                    Spacer(modifier = Modifier.width(4.dp))
-                                    Text(
-                                        text = "أوتو (GPS)",
-                                        color = if (selectedGov.name.contains("GPS") || selectedGov.name.contains("تلقائي")) Color.White else EmeraldDeep,
-                                        fontSize = 11.sp,
-                                        fontWeight = FontWeight.Bold
-                                    )
-                                }
-                            }
-
-                            Spacer(modifier = Modifier.width(6.dp))
-
-                            // زر تغيير المحافظة يدوياً
-                            Surface(
-                                shape = RoundedCornerShape(8.dp),
-                                color = GoldChampagne.copy(alpha = 0.2f),
-                                modifier = Modifier
-                                    .clip(RoundedCornerShape(8.dp))
-                                    .clickable { showGovDropdown = true }
-                            ) {
-                                Row(
-                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 5.dp),
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Text(
-                                        text = "المحافظات",
-                                        color = GoldDark,
-                                        fontSize = 11.sp,
-                                        fontWeight = FontWeight.Bold
-                                    )
-                                }
-                            }
-                        }
-                    }
-
-                    // Dropdown menu for Egypt's 27 Governorates
-                    DropdownMenu(
-                        expanded = showGovDropdown,
-                        onDismissRequest = { showGovDropdown = false }
-                    ) {
-                        repository.EGYPT_GOVERNORATES.forEach { gov ->
-                            val isAutoOption = gov.name.contains("GPS") || gov.name.contains("تلقائي")
-                            DropdownMenuItem(
-                                text = {
-                                    Row(verticalAlignment = Alignment.CenterVertically) {
-                                        if (isAutoOption) {
-                                            Icon(Icons.Default.MyLocation, contentDescription = null, tint = EmeraldDeep, modifier = Modifier.size(16.dp))
-                                            Spacer(modifier = Modifier.width(6.dp))
-                                        }
-                                        Text(
-                                            text = gov.name,
-                                            fontWeight = if (gov.name == selectedGov.name || (isAutoOption && selectedGov.name.contains("GPS"))) FontWeight.Bold else FontWeight.Normal,
-                                            color = if (isAutoOption) EmeraldDeep else MaterialTheme.colorScheme.onSurface
-                                        )
-                                    }
-                                },
-                                onClick = {
-                                    userRepository.setGovernorate(gov.name)
-                                    showGovDropdown = false
-                                }
-                            )
-                        }
-                    }
-                }
-            }
-        }
-
-        // 2. High-Contrast Islamic Brass Compass Dial
+        // 1. High-Contrast Islamic Brass Compass Dial
         item(key = "compass_card") {
             Card(
                 shape = RoundedCornerShape(24.dp),
@@ -552,32 +415,26 @@ fun QiblaScreen(
             }
         }
 
-        // 3. Today's Prayer Timetable with Iqama Delays
+        // 2. Today's Prayer Timetable
         item(key = "prayer_times_header") {
             Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 4.dp, bottom = 4.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
+                Box(
+                    modifier = Modifier
+                        .size(4.dp, 18.dp)
+                        .background(GoldChampagne, RoundedCornerShape(2.dp))
+                )
+                Spacer(modifier = Modifier.width(8.dp))
                 Text(
-                    text = "مواقيت الصلاة لليوم (${selectedGov.name})",
+                    text = "مواقيت صلاة اليوم",
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
                     color = titleColor()
                 )
-
-                Surface(
-                    shape = RoundedCornerShape(8.dp),
-                    color = EmeraldLight
-                ) {
-                    Text(
-                        text = "محسوب محلياً",
-                        color = EmeraldDeep,
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
-                    )
-                }
             }
         }
 

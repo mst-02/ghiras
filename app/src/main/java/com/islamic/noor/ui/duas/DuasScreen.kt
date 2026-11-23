@@ -1,8 +1,9 @@
 package com.islamic.noor.ui.duas
 
 import android.content.Intent
+import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -17,36 +18,26 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
-import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.AutoAwesome
-import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.Healing
-import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Spa
 import androidx.compose.material.icons.filled.VolunteerActivism
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
@@ -74,102 +65,103 @@ data class DuaItem(
     val title: String,
     val text: String,
     val reference: String,
-    val category: String,
-    val isCustom: Boolean = false
+    val category: String
 )
 
 val ComprehensiveDuasList = listOf(
     // قسم المتوفين
     DuaItem(
         id = 1,
-        title = "دعاء جامع بالرحمة والمغفرة",
-        text = "اللَّهُمَّ اغْفِرْ لَهُ وَارْحَمْهُ، وَعَافِهِ وَاعْفُ عَنْهُ، وَأَكْرِمْ نُزُلَهُ، وَوَسِّعْ مُدْخَلَهُ، وَاغْسِلْهُ بِالْمَاءِ وَالثَّلْجِ وَالْبَرَدِ، وَنَقِّهِ مِنَ الْخَطَايَا كَمَا نَقَّيْتَ الثَّوْبَ الأَبْيَضَ مِنَ الدَّنَسِ.",
+        title = "دعاء جامع بالرحمة والمغفرة للمتوفى",
+        text = "«اللَّهُمَّ اغْفِرْ لَهُ وَارْحَمْهُ، وَعَافِهِ وَاعْفُ عَنْهُ، وَأَكْرِمْ نُزُلَهُ، وَوَسِّعْ مُدْخَلَهُ، وَاغْسِلْهُ بِالْمَاءِ وَالثَّلْجِ وَالْبَرَدِ، وَنَقِّهِ مِنَ الْخَطَايَا كَمَا نَقَّيْتَ الثَّوْبَ الأَبْيَضَ مِنَ الدَّنَسِ».",
         reference = "صحيح مسلم",
         category = "أدعية للمتوفين"
     ),
     DuaItem(
         id = 2,
         title = "دعاء لتنوير القبر والفسحة فيه",
-        text = "اللَّهُمَّ اجْعَلْ قَبْرَهُ رَوْضَةً مِنْ رِيَاضِ الْجَنَّةِ، وَلاَ تَجْعَلْهُ حُفْرَةً مِنْ حُفَرِ النَّارِ، اللَّهُمَّ افْسَحْ لَهُ فِي قَبْرِهِ مَدَّ بَصَرِهِ، وَافْرُشْ قَبْرَهُ مِنْ فِرَاشِ الْجَنَّةِ.",
-        reference = "مأثور",
+        text = "«اللَّهُمَّ اجْعَلْ قَبْرَهُ رَوْضَةً مِنْ رِيَاضِ الْجَنَّةِ، وَلاَ تَجْعَلْهُ حُفْرَةً مِنْ حُفَرِ النَّارِ، اللَّهُمَّ افْسَحْ لَهُ فِي قَبْرِهِ مَدَّ بَصَرِهِ، وَافْرُشْ قَبْرَهُ مِنْ فِرَاشِ الْجَنَّةِ».",
+        reference = "مأثور عن السلف",
         category = "أدعية للمتوفين"
     ),
     DuaItem(
         id = 3,
         title = "دعاء الثبات ورفع الدرجات",
-        text = "اللَّهُمَّ أَبْدِلْهُ دَاراً خَيْراً مِنْ دَارِهِ، وَأَهْلاً خَيْراً مِنْ أَهْلِهِ، وَأَدْخِلْهُ الْجَنَّةَ، وَأَعِذْهُ مِنْ عَذَابِ الْقَبْرِ، وَمِنْ عَذَابِ النَّارِ، اللَّهُمَّ اجْعَلْ عَنْ يَمِينِهِ نُوراً، حَتَّى تَبْعَثَهُ آمِناً مُطْمَئِنّاً.",
+        text = "«اللَّهُمَّ أَبْدِلْهُ دَاراً خَيْراً مِنْ دَارِهِ، وَأَهْلاً خَيْراً مِنْ أَهْلِهِ، وَأَدْخِلْهُ الْجَنَّةَ، وَأَعِذْهُ مِنْ عَذَابِ الْقَبْرِ، وَمِنْ عَذَابِ النَّارِ، اللَّهُمَّ اجْعَلْ عَنْ يَمِينِهِ نُوراً، حَتَّى تَبْعَثَهُ آمِناً مُطْمَئِنّاً».",
         reference = "مأثور",
         category = "أدعية للمتوفين"
     ),
     DuaItem(
         id = 4,
         title = "دعاء الشفاعة وثقل الميزان",
-        text = "اللَّهُمَّ شَفِّعْ فِيهِ نَبِيَّنَا مُحَمَّداً ﷺ، وَاحْشُرْهُ تَحْتَ لِوَائِهِ، وَاسْقِهِ مِنْ يَدِهِ الشَّرِيفَةِ شَرْبَةً هَنِيئَةً لاَ يَظْمَأُ بَعْدَهَا أَبَداً، وَاجْعَلْهُ فِي أَعْلَى عِلِّيِّينَ.",
+        text = "«اللَّهُمَّ شَفِّعْ فِيهِ نَبِيَّنَا مُحَمَّداً ﷺ، وَاحْشُرْهُ تَحْتَ لِوَائِهِ، وَاسْقِهِ مِنْ يَدِهِ الشَّرِيفَةِ شَرْبَةً هَنِيئَةً لاَ يَظْمَأُ بَعْدَهَا أَبَداً، وَاجْعَلْهُ فِي أَعْلَى عِلِّيِّينَ».",
         reference = "مأثور",
         category = "أدعية للمتوفين"
     ),
 
-    // قسم الرزق والفرج
+    // قسم الوالدين
     DuaItem(
         id = 5,
-        title = "دعاء قضاء الدين وسعة الرزق",
+        title = "دعاء القرآن الكريم للوالدين",
+        text = "«رَبَّنَا اغْفِرْ لِي وَلِوَالِدَيَّ وَلِلْمُؤْمِنِينَ يَوْمَ يَقُومُ الْحِسَابُ ، رَّبِّ ارْحَمْهُمَا كَمَا رَبَّيَانِي صَغِيرًا».",
+        reference = "سورة إبراهيم والإسراء",
+        category = "أدعية للوالدين"
+    ),
+    DuaItem(
+        id = 6,
+        title = "دعاء العافية والبر بالوالدين",
+        text = "«اللَّهُمَّ اجْعَلْ أُمِّي وَأَبِي مِنْ سُعَدَاءِ الدَّارَيْنِ، اللَّهُمَّ أَلْبِسْهُمَا ثَوْبَ الصِّحَّةِ وَالْعَافِيَةِ، وَارْزُقْنِي بِرَّهُمَا وَرِضَاهُمَا فِي حَيَاتِهِمَا وَبَعْدَ مَمَاتِهِمَا».",
+        reference = "مأثور",
+        category = "أدعية للوالدين"
+    ),
+    DuaItem(
+        id = 7,
+        title = "دعاء مغفرة ذنوب الوالدين",
+        text = "«اللَّهُمَّ اغْفِرْ لِوَالِدَيَّ وَارْحَمْهُمَا وَعَافِهِمَا، وَاجْزِهِمَا عَنِّي خَيْرَ الْجَزَاءِ عَلَى كُلِّ لَحْظَةٍ سَهِرَا فِيهَا مِنْ أَجْلِي».",
+        reference = "مأثور",
+        category = "أدعية للوالدين"
+    ),
+
+    // قسم الرزق والفرج
+    DuaItem(
+        id = 8,
+        title = "دعاء قضاء الدين وتفريج الهم",
         text = "«اللَّهُمَّ إِنِّي أَعُوذُ بِكَ مِنَ الْهَمِّ وَالْحَزَنِ، وَأَعُوذُ بِكَ مِنَ الْعَجْزِ وَالْكَسَلِ، وَأَعُوذُ بِكَ مِنَ الْجُبْنِ وَالْبُخْلِ، وَأَعُوذُ بِكَ مِنْ غَلَبَةِ الدَّيْنِ وَقَهْرِ الرِّجَالِ».",
         reference = "صحيح البخاري",
         category = "الرزق وتفريج الهم"
     ),
     DuaItem(
-        id = 6,
-        title = "دعاء الكفاية بالحلال",
+        id = 9,
+        title = "دعاء الكفاية بالحلال وسعة الرزق",
         text = "«اللَّهُمَّ اكْفِنِي بِحَلاَلِكَ عَنْ حَرَامِكَ، وَأَغْنِنِي بِفَضْلِكَ عَمَّنْ سِوَاكَ».",
         reference = "جامع الترمذي",
         category = "الرزق وتفريج الهم"
     ),
     DuaItem(
-        id = 7,
-        title = "دعاء ذي النون لتفريج الكرب",
+        id = 10,
+        title = "دعاء ذي النون لتفريج الكروب",
         text = "«لاَ إِلَـهَ إِلاَّ أَنْتَ سُبْحَانَكَ إِنِّي كُنْتُ مِنَ الظَّالِمِينَ»؛ ما دعا بها مكروب إلا فرج الله عنه كربته.",
         reference = "رواه الترمذي والنسائي",
         category = "الرزق وتفريج الهم"
     ),
-    DuaItem(
-        id = 8,
-        title = "دعاء الفرج واليسر",
-        text = "«اللَّهُمَّ لاَ سَهْلَ إِلاَّ مَا جَعَلْتَهُ سَهْلاً، وَأَنْتَ تَجْعَلُ الْحَزْنَ إِذَا شِئْتَ سَهْلاً».",
-        reference = "رواه ابن حبان",
-        category = "الرزق وتفريج الهم"
-    ),
 
-    // قسم الشفاء والعافية
+    // قسم الشفاء
     DuaItem(
-        id = 9,
-        title = "دعاء عيادة المريض بالشفاء",
-        text = "«اللَّهُمَّ رَبَّ النَّاسِ، أَذْهِبِ الْبَاسَ، اشْفِهِ وَأَنْتَ الشَّافِي، لاَ شِفَاءَ إِلاَّ شِفَاؤُكَ، شِفَاءً لاَ يُغَادِرُ سَقَمًا».",
+        id = 11,
+        title = "دعاء النبي ﷺ لعيادة المريض",
+        text = "«اللَّهُمَّ رَبَّ النَّاسِ، أَذْهِبِ الْبَاسَ، اشْفِ أَنْتَ الشَّافِي، لاَ شِفَاءَ إِلاَّ شِفَاؤُكَ، شِفَاءً لاَ يُغَادِرُ سَقَماً».",
         reference = "متفق عليه",
         category = "الشفاء والعافية"
     ),
     DuaItem(
-        id = 10,
-        title = "الرقية المأثورة بالبسملة",
-        text = "«بِسْمِ اللَّهِ (ثلاثاً)، أَعُوذُ بِاللَّهِ وَقُدْرَتِهِ مِنْ شَرِّ مَا أَجِدُ وَأُحَاذِرُ (سبع مرات)».",
-        reference = "صحيح مسلم",
-        category = "الشفاء والعافية"
-    ),
-    DuaItem(
-        id = 11,
-        title = "دعاء العفو والعافية الشاملة",
-        text = "«اللَّهُمَّ إِنِّي أَسْأَلُكَ الْعَفْوَ وَالْعَافِيَةَ فِي دِينِي وَدُنْيَايَ وَأَهْلِي وَمَالِي، اللَّهُمَّ اسْتُرْ عَوْرَاتِي وَآمِنْ رَوْعَاتِي».",
-        reference = "سنن أبي داود",
+        id = 12,
+        title = "دعاء سؤال العفو والعافية",
+        text = "«اللَّهُمَّ إِنِّي أَسْأَلُكَ الْعَفْوَ وَالْعَافِيَةَ فِي الدُّنْيَا وَالآخِرَةِ، اللَّهُمَّ إِنِّي أَسْأَلُكَ الْعَفْوَ وَالْعَافِيَةَ فِي دِينِي وَدُنْيَايَ وَأَهْلِي وَمَالِي».",
+        reference = "سنن أبي داود وابن ماجه",
         category = "الشفاء والعافية"
     ),
 
-    // جوامع الدعاء وبر الوالدين
-    DuaItem(
-        id = 12,
-        title = "دعاء بر الوالدين والرحمة لهما",
-        text = "﴿رَبِّ اغْفِرْ لِي وَلِوَالِدَيَّ وَلِمَن دَخَلَ بَيْتِيَ مُؤْمِناً وَلِلْمُؤْمِنِينَ وَالْمُؤْمِنَاتِ﴾، ﴿رَّبِّ ارْحَمْهُمَا كَمَا رَبَّيَانِي صَغِيراً﴾.",
-        reference = "سورة نوح والإسراء",
-        category = "جوامع الدعاء"
-    ),
+    // جوامع الدعاء
     DuaItem(
         id = 13,
         title = "دعاء حسنة الدنيا والآخرة",
@@ -200,12 +192,11 @@ data class DuaCategoryItem(
 )
 
 val MainDuaCategories = listOf(
-    DuaCategoryItem("أدعية للمتوفين", "صدقة جارية ودعاء بالرحمة والمغفرة وتخصيص الاسم", Icons.Default.Favorite),
-    DuaCategoryItem("أدعية للوالدين", "بر الوالدين والدعاء لهما بالرحمة والمغفرة والعافية", Icons.Default.VolunteerActivism),
+    DuaCategoryItem("أدعية للمتوفين", "أدعية بالرحمة والمغفرة والفسحة في القبور", Icons.Default.Favorite),
+    DuaCategoryItem("أدعية للوالدين", "بر الوالدين والدعاء لهما بالرحمة والعافية", Icons.Default.VolunteerActivism),
     DuaCategoryItem("الرزق وتفريج الهم", "تفريج الكروب وسعة الرزق وقضاء الديون والبركة", Icons.Default.Spa),
     DuaCategoryItem("الشفاء والعافية", "الرقية الشرعية وطلب الشفاء من كل داء وسقم", Icons.Default.Healing),
-    DuaCategoryItem("جوامع الدعاء", "جوامع الدعاء النبوي لخيري الدنيا والآخرة", Icons.Default.AutoAwesome),
-    DuaCategoryItem("أدعيتي الخاصة", "أدعيتك المكتوبة والمحفوظة للتضرع بها", Icons.Default.Bookmark)
+    DuaCategoryItem("جوامع الدعاء", "جوامع الدعاء النبوي لخيري الدنيا والآخرة", Icons.Default.AutoAwesome)
 )
 
 @Composable
@@ -214,18 +205,16 @@ fun DuasScreen(
 ) {
     val context = LocalContext.current
     var activeCategory by remember { mutableStateOf<String?>(null) }
-    var deceasedName by remember { mutableStateOf("") }
-    val customDuasList = remember { mutableStateListOf<DuaItem>() }
     val favoriteDuaIds = remember { mutableStateListOf<Int>() }
 
-    var showAddCustomDuaDialog by remember { mutableStateOf(false) }
-    var newDuaTitle by remember { mutableStateOf("") }
-    var newDuaText by remember { mutableStateOf("") }
+    // Intercept back button when inside a category to return to categories list
+    BackHandler(enabled = activeCategory != null) {
+        activeCategory = null
+    }
 
-    val filteredDuas = remember(activeCategory, customDuasList.toList()) {
+    val filteredDuas = remember(activeCategory) {
         when (activeCategory) {
             null -> emptyList()
-            "أدعيتي الخاصة" -> customDuasList.toList()
             else -> ComprehensiveDuasList.filter { it.category == activeCategory }
         }
     }
@@ -241,7 +230,9 @@ fun DuasScreen(
         if (activeCategory == null) {
             item(key = "duas_section_title") {
                 Row(
-                    modifier = Modifier.fillMaxWidth().padding(bottom = 2.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 2.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Box(
@@ -260,13 +251,13 @@ fun DuasScreen(
             }
 
             items(MainDuaCategories, key = { it.title }) { cat ->
-                val count = if (cat.title == "أدعيتي الخاصة") customDuasList.size else ComprehensiveDuasList.count { it.category == cat.title }
+                val count = ComprehensiveDuasList.count { it.category == cat.title }
                 Card(
                     onClick = { activeCategory = cat.title },
                     shape = RoundedCornerShape(18.dp),
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                     elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-                    border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.15f)),
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.15f)),
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Row(
@@ -336,9 +327,10 @@ fun DuasScreen(
                 Surface(
                     shape = RoundedCornerShape(12.dp),
                     color = MaterialTheme.colorScheme.surface,
-                    border = androidx.compose.foundation.BorderStroke(1.dp, GoldChampagne.copy(alpha = 0.4f)),
+                    border = BorderStroke(1.dp, GoldChampagne.copy(alpha = 0.4f)),
                     modifier = Modifier
                         .fillMaxWidth()
+                        .clip(RoundedCornerShape(12.dp))
                         .clickable { activeCategory = null }
                 ) {
                     Row(
@@ -349,216 +341,86 @@ fun DuasScreen(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "رجوع",
                             tint = GoldChampagne,
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = "الرجوع لكافة أبواب الأدعية",
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = GoldDark
+                        )
+                    }
+                }
+            }
+
+            item(key = "active_category_banner") {
+                Surface(
+                    shape = RoundedCornerShape(12.dp),
+                    color = EmeraldDeep,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.AutoAwesome,
+                            contentDescription = null,
+                            tint = GoldBright,
                             modifier = Modifier.size(20.dp)
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
-                            text = "الرجوع إلى أبواب الأدعية • $activeCategory",
-                            style = MaterialTheme.typography.titleSmall,
+                            text = activeCategory ?: "",
+                            fontSize = 14.sp,
                             fontWeight = FontWeight.Bold,
-                            color = titleColor()
+                            color = Color.White
                         )
                     }
                 }
             }
 
-            // Add custom dua button when in custom category
-            if (activeCategory == "أدعيتي الخاصة") {
-                item(key = "add_custom_dua_btn") {
-                    Button(
-                        onClick = { showAddCustomDuaDialog = true },
-                        colors = ButtonDefaults.buttonColors(containerColor = EmeraldDeep),
-                        shape = RoundedCornerShape(12.dp),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Icon(Icons.Default.Add, contentDescription = null, tint = Color.White)
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text("إضافة دعاء خاص بك", color = Color.White, fontWeight = FontWeight.Bold)
-                    }
-                }
-            }
-
-            // Name Personalization Card (Active when in deceased category)
-            if (activeCategory == "أدعية للمتوفين") {
-                item(key = "name_input") {
-                    Card(
-                        shape = RoundedCornerShape(18.dp),
-                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-                        border = androidx.compose.foundation.BorderStroke(1.dp, GoldChampagne.copy(alpha = 0.4f)),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Column(modifier = Modifier.padding(16.dp)) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Surface(
-                                    shape = CircleShape,
-                                    color = GoldChampagne.copy(alpha = 0.2f),
-                                    modifier = Modifier.size(36.dp)
-                                ) {
-                                    Box(contentAlignment = Alignment.Center) {
-                                        Icon(
-                                            imageVector = Icons.Default.Person,
-                                            contentDescription = null,
-                                            tint = GoldDark,
-                                            modifier = Modifier.size(20.dp)
-                                        )
-                                    }
-                                }
-                                Spacer(modifier = Modifier.width(10.dp))
-                                Text(
-                                    text = "تخصيص الدعاء باسم فقيدك الغالي",
-                                    style = MaterialTheme.typography.titleMedium,
-                                    fontWeight = FontWeight.Bold,
-                                    color = titleColor()
-                                )
-                            }
-
-                            Spacer(modifier = Modifier.height(10.dp))
-
-                            OutlinedTextField(
-                                value = deceasedName,
-                                onValueChange = { deceasedName = it },
-                                placeholder = { Text("مثال: أبي الحبيب، أمي الغالية، أو الاسم...") },
-                                modifier = Modifier.fillMaxWidth(),
-                                shape = RoundedCornerShape(12.dp),
-                                singleLine = true,
-                                colors = OutlinedTextFieldDefaults.colors(
-                                    focusedBorderColor = titleColor(),
-                                    unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.4f)
-                                )
-                            )
-
-                            if (deceasedName.isNotBlank()) {
-                                Spacer(modifier = Modifier.height(8.dp))
-                                Text(
-                                    text = "سيتم إدراج «$deceasedName» تلقائياً في نصوص الأدعية بالأسفل بإذن الله.",
-                                    fontSize = 12.sp,
-                                    color = titleColor(),
-                                    fontWeight = FontWeight.Medium
-                                )
-                            }
+            items(filteredDuas, key = { it.id }) { dua ->
+                val isFav = favoriteDuaIds.contains(dua.id)
+                DuaCard(
+                    dua = dua,
+                    isFavorite = isFav,
+                    onToggleFavorite = {
+                        if (isFav) favoriteDuaIds.remove(dua.id)
+                        else favoriteDuaIds.add(dua.id)
+                    },
+                    onShare = {
+                        val shareText = "${dua.title}\n\n${dua.text}\n\nالمصدر: ${dua.reference}\n\nتطبيق غِراس - غرسٌ طيب وأجرٌ دائم"
+                        val sendIntent = Intent().apply {
+                            action = Intent.ACTION_SEND
+                            putExtra(Intent.EXTRA_TEXT, shareText)
+                            type = "text/plain"
                         }
+                        context.startActivity(Intent.createChooser(sendIntent, "مشاركة الدعاء المبارك"))
                     }
-                }
-            }
-
-            // Duas List
-            if (filteredDuas.isEmpty() && activeCategory == "أدعيتي الخاصة") {
-                item(key = "empty_custom") {
-                    Text(
-                        text = "لم تقم بإضافة أدعية خاصة بعد. اضغط على الزر بالأعلى لإضافة دعائك.",
-                        textAlign = TextAlign.Center,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(top = 24.dp)
-                    )
-                }
-            } else {
-                items(filteredDuas, key = { it.id }) { dua ->
-                    val isFav = favoriteDuaIds.contains(dua.id)
-                    DuaDisplayCard(
-                        dua = dua,
-                        deceasedName = deceasedName,
-                        isFavorite = isFav,
-                        onToggleFavorite = {
-                            if (isFav) favoriteDuaIds.remove(dua.id)
-                            else favoriteDuaIds.add(dua.id)
-                        },
-                        onShare = { textToShare ->
-                            val sendIntent = Intent().apply {
-                                action = Intent.ACTION_SEND
-                                putExtra(Intent.EXTRA_TEXT, "${dua.title}\n\n$textToShare\n\nتطبيق غِراس - غرسٌ طيب وأجرٌ دائم")
-                                type = "text/plain"
-                            }
-                            context.startActivity(Intent.createChooser(sendIntent, "مشاركة الدعاء المبارك"))
-                        }
-                    )
-                }
+                )
             }
         }
-    }
-
-    // Add Custom Dua Dialog
-    if (showAddCustomDuaDialog) {
-        AlertDialog(
-            onDismissRequest = { showAddCustomDuaDialog = false },
-            title = { Text("إضافة دعاء خاص", fontWeight = FontWeight.Bold, color = titleColor()) },
-            text = {
-                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    OutlinedTextField(
-                        value = newDuaTitle,
-                        onValueChange = { newDuaTitle = it },
-                        label = { Text("عنوان الدعاء (مثال: دعاء التوفيق، دعاء للأولاد)") },
-                        singleLine = true,
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                    OutlinedTextField(
-                        value = newDuaText,
-                        onValueChange = { newDuaText = it },
-                        label = { Text("نص الدعاء المبارك") },
-                        minLines = 3,
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                }
-            },
-            confirmButton = {
-                Button(
-                    onClick = {
-                        if (newDuaTitle.isNotBlank() && newDuaText.isNotBlank()) {
-                            val newItem = DuaItem(
-                                id = (System.currentTimeMillis() % 100000).toInt(),
-                                title = newDuaTitle.trim(),
-                                text = newDuaText.trim(),
-                                reference = "دعاء شخصي محفوظ محلياً",
-                                category = "أدعيتي الخاصة",
-                                isCustom = true
-                            )
-                            customDuasList.add(newItem)
-                            newDuaTitle = ""
-                            newDuaText = ""
-                            showAddCustomDuaDialog = false
-                        }
-                    },
-                    colors = ButtonDefaults.buttonColors(containerColor = EmeraldDeep)
-                ) {
-                    Text("إضافة الدعاء", color = Color.White)
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showAddCustomDuaDialog = false }) {
-                    Text("إلغاء")
-                }
-            }
-        )
     }
 }
 
 @Composable
-private fun DuaDisplayCard(
+private fun DuaCard(
     dua: DuaItem,
-    deceasedName: String,
     isFavorite: Boolean,
     onToggleFavorite: () -> Unit,
-    onShare: (String) -> Unit
+    onShare: () -> Unit
 ) {
-    val personalizedText = if (deceasedName.isNotBlank() && dua.category == "أدعية للمتوفين") {
-        dua.text.replace("لَهُ", "لـ $deceasedName")
-            .replace("قَبْرَهُ", "قبر $deceasedName")
-            .replace("مَدَّ بَصَرِهِ", "مد بصره")
-    } else {
-        dua.text
-    }
-
     Card(
         shape = RoundedCornerShape(18.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.15f)),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.15f)),
         modifier = Modifier.fillMaxWidth()
     ) {
         Column(modifier = Modifier.padding(18.dp)) {
+            // Header: Favorite + Title
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -587,55 +449,64 @@ private fun DuaDisplayCard(
                     color = EmeraldLight
                 ) {
                     Text(
-                        text = dua.reference,
+                        text = dua.category,
                         color = EmeraldDeep,
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.Medium,
-                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
                     )
                 }
             }
 
-            Spacer(modifier = Modifier.height(14.dp))
-
-            Text(
-                text = personalizedText,
-                style = MaterialTheme.typography.bodyLarge,
-                fontSize = 17.sp,
-                lineHeight = 30.sp,
-                fontWeight = FontWeight.Normal,
-                textAlign = TextAlign.Start,
-                color = MaterialTheme.colorScheme.onSurface
-            )
-
             Spacer(modifier = Modifier.height(12.dp))
 
+            // Dua Text
+            Text(
+                text = dua.text,
+                fontSize = 16.sp,
+                lineHeight = 28.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.onSurface,
+                textAlign = TextAlign.Justify,
+                modifier = Modifier.fillMaxWidth()
+            )
+
+            Spacer(modifier = Modifier.height(14.dp))
+
+            // Footer: Reference + Share
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.End,
+                horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
+                Text(
+                    text = "المصدر: ${dua.reference}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = GoldDark,
+                    fontWeight = FontWeight.Medium
+                )
+
                 Surface(
-                    shape = RoundedCornerShape(10.dp),
-                    color = GoldChampagne.copy(alpha = 0.18f),
+                    shape = RoundedCornerShape(8.dp),
+                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f),
                     modifier = Modifier
-                        .clip(RoundedCornerShape(10.dp))
-                        .clickable { onShare(personalizedText) }
+                        .clip(RoundedCornerShape(8.dp))
+                        .clickable { onShare() }
                 ) {
                     Row(
-                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Icon(
                             imageVector = Icons.Default.Share,
                             contentDescription = "مشاركة",
-                            tint = GoldDark,
-                            modifier = Modifier.size(16.dp)
+                            tint = titleColor(),
+                            modifier = Modifier.size(14.dp)
                         )
-                        Spacer(modifier = Modifier.width(6.dp))
+                        Spacer(modifier = Modifier.width(4.dp))
                         Text(
-                            text = "مشاركة الدعاء",
-                            color = GoldDark,
+                            text = "مشاركة",
+                            color = titleColor(),
                             fontSize = 11.sp,
                             fontWeight = FontWeight.Bold
                         )

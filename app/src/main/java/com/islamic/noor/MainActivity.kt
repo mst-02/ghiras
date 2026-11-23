@@ -114,13 +114,21 @@ fun MainApp() {
             currentRoute == Screen.Contest.route ||
             currentRoute == Screen.Profile.route
 
+    val backDispatcher = androidx.activity.compose.LocalOnBackPressedDispatcherOwner.current?.onBackPressedDispatcher
+
     Scaffold(
         topBar = {
             if (currentRoute?.startsWith("surah_detail") != true) {
                 AppTopBar(
                     title = screenTitle,
                     onBackClick = if (!isRootScreen) {
-                        { navController.popBackStack() }
+                        {
+                            if (backDispatcher != null && backDispatcher.hasEnabledCallbacks()) {
+                                backDispatcher.onBackPressed()
+                            } else {
+                                navController.popBackStack()
+                            }
+                        }
                     } else null
                 )
             }
@@ -217,7 +225,10 @@ fun MainApp() {
 
             composable(Screen.GroupKhatmah.route) {
                 GroupKhatmahScreen(
-                    onBack = { navController.popBackStack() }
+                    onBack = { navController.popBackStack() },
+                    onOpenQuran = { surahId ->
+                        navController.navigate("surah_detail/$surahId")
+                    }
                 )
             }
         }

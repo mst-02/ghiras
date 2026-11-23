@@ -1,6 +1,7 @@
 package com.islamic.noor.ui.hadith
 
 import android.content.Intent
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -47,6 +48,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -244,6 +246,19 @@ val HadithCategories = listOf(
     )
 )
 
+object HadithFavoritesManager {
+    val favorites = mutableSetOf<Int>(1, 2)
+
+    fun isFavorite(id: Int): Boolean = favorites.contains(id)
+
+    fun toggleFavorite(id: Int) {
+        if (favorites.contains(id)) favorites.remove(id)
+        else favorites.add(id)
+    }
+
+    fun count(): Int = favorites.size
+}
+
 @Composable
 fun HadithScreen(
     onBack: () -> Unit = {}
@@ -251,13 +266,18 @@ fun HadithScreen(
     val context = LocalContext.current
     var searchQuery by remember { mutableStateOf("") }
     var activeCategory by remember { mutableStateOf<String?>(null) }
-    val favoriteHadithIds = remember { mutableStateListOf<Int>() }
+    var favUpdateTrigger by remember { mutableIntStateOf(0) }
 
-    val displayedHadiths = remember(searchQuery, activeCategory) {
+    // Intercept back button when inside a category to return to Hadith categories list
+    BackHandler(enabled = activeCategory != null) {
+        activeCategory = null
+    }
+
+    val displayedHadiths = remember(searchQuery, activeCategory, favUpdateTrigger) {
         SampleHadiths.filter { hadith ->
             val matchesCategory = when (activeCategory) {
                 null -> true
-                "الأحاديث المفضلة" -> favoriteHadithIds.contains(hadith.id)
+                "الأحاديث المفضلة" -> HadithFavoritesManager.isFavorite(hadith.id)
                 else -> hadith.category == activeCategory
             }
             val matchesSearch = searchQuery.isBlank() ||
@@ -379,7 +399,7 @@ fun HadithScreen(
                                 color = titleColor()
                             )
                             Text(
-                                text = "${favoriteHadithIds.size} حديث تم تمييزه بالمفضلة",
+                                text = "${HadithFavoritesManager.count()} حديث تم تمييزه بالمفضلة",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.65f)
                             )
@@ -501,13 +521,13 @@ fun HadithScreen(
                 }
             } else {
                 items(displayedHadiths, key = { it.id }) { hadith ->
-                    val isFav = favoriteHadithIds.contains(hadith.id)
+                    val isFav = HadithFavoritesManager.isFavorite(hadith.id)
                     HadithCard(
                         hadith = hadith,
                         isFavorite = isFav,
                         onToggleFavorite = {
-                            if (isFav) favoriteHadithIds.remove(hadith.id)
-                            else favoriteHadithIds.add(hadith.id)
+                            HadithFavoritesManager.toggleFavorite(hadith.id)
+                            favUpdateTrigger++
                         },
                         onShare = {
                             val shareText = "${hadith.title}\n\n${hadith.matn}\n\nرواه: ${hadith.narrator} (${hadith.source})\n\nتطبيق غِراس - غرسٌ طيب وأجرٌ دائم"

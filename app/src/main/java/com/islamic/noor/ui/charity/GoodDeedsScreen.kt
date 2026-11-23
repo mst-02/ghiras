@@ -1,7 +1,8 @@
 package com.islamic.noor.ui.charity
 
+import android.widget.Toast
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -22,10 +23,9 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Mosque
-import androidx.compose.material.icons.filled.NotificationsActive
 import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.filled.VolunteerActivism
 import androidx.compose.material.icons.filled.WaterDrop
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -38,8 +38,6 @@ import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Switch
-import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
@@ -56,6 +54,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
@@ -65,25 +64,29 @@ import com.islamic.noor.domain.model.CharityProject
 import com.islamic.noor.domain.model.GoodDeedDoor
 import com.islamic.noor.ui.theme.EmeraldDeep
 import com.islamic.noor.ui.theme.EmeraldLight
+import com.islamic.noor.ui.theme.EmeraldMedium
+import com.islamic.noor.ui.theme.GoldBright
 import com.islamic.noor.ui.theme.GoldChampagne
 import com.islamic.noor.ui.theme.GoldDark
+import com.islamic.noor.ui.theme.titleColor
 
 @Composable
 fun GoodDeedsScreen(
     onBack: () -> Unit = {},
     repository: GhirasRepository = remember { GhirasRepository.instance }
 ) {
+    val context = LocalContext.current
     val deeds by repository.getGoodDeeds().collectAsState(initial = emptyList())
     val projects by repository.charityProjects.collectAsState()
-    var selectedTab by remember { mutableIntStateOf(0) } // 0: مشاريع الصدقة، 1: أبواب الأجر
-    var dailyReminderEnabled by remember { mutableStateOf(true) }
+    var selectedTab by remember { mutableIntStateOf(0) } // 0: مشاريع الصدقة، 1: أبواب الخير
 
-    // Dialog state for pledging shares
-    var selectedProjectForPledge by remember { mutableStateOf<CharityProject?>(null) }
+    // Donation Dialog State
+    var selectedProjectForDonation by remember { mutableStateOf<CharityProject?>(null) }
     var donorName by remember { mutableStateOf("") }
     var donorPhone by remember { mutableStateOf("") }
-    var sharesCount by remember { mutableIntStateOf(1) }
-    var showSuccessToast by remember { mutableStateOf(false) }
+    var donationAmount by remember { mutableStateOf("100") }
+    var destinationNote by remember { mutableStateOf("") }
+    var showSuccessDialog by remember { mutableStateOf(false) }
 
     LazyColumn(
         modifier = Modifier
@@ -92,43 +95,51 @@ fun GoodDeedsScreen(
         contentPadding = PaddingValues(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        // Header
-        item(key = "header") {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
+        // 1. Top Prominent Notice Banner (الرسالة العلوية الفاخرة المطلوبة بالكامل)
+        item(key = "top_notice_banner") {
+            Card(
+                shape = RoundedCornerShape(18.dp),
+                colors = CardDefaults.cardColors(containerColor = EmeraldDeep),
+                elevation = CardDefaults.cardElevation(defaultElevation = 3.dp),
+                border = BorderStroke(1.5.dp, GoldBright),
+                modifier = Modifier.fillMaxWidth()
             ) {
-                IconButton(onClick = onBack) {
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                        contentDescription = "رجوع",
-                        tint = EmeraldDeep
-                    )
-                }
-                Spacer(modifier = Modifier.width(8.dp))
-                Column {
+                Row(
+                    modifier = Modifier.padding(16.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Surface(
+                        shape = CircleShape,
+                        color = GoldChampagne.copy(alpha = 0.22f),
+                        modifier = Modifier.size(46.dp)
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Icon(
+                                imageVector = Icons.Default.VolunteerActivism,
+                                contentDescription = null,
+                                tint = GoldBright,
+                                modifier = Modifier.size(24.dp)
+                            )
+                        }
+                    }
+                    Spacer(modifier = Modifier.width(14.dp))
                     Text(
-                        text = "غِراس الخير: مشاريع الصدقة الجارية",
-                        style = MaterialTheme.typography.titleLarge,
+                        text = "نحن نتكفل بالتنفيذ الميداني ونوفر لك إمكانية المساهمة بأسهم ميسرة لتنال أجر الصدقة الجارية لك أو لوالديك",
+                        color = Color.White,
+                        fontSize = 13.sp,
                         fontWeight = FontWeight.Bold,
-                        color = EmeraldDeep
-                    )
-                    Text(
-                        text = "غرسٌ طيب في الدنيا وأجرٌ دائم في الآخرة",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = GoldDark,
-                        fontWeight = FontWeight.SemiBold
+                        lineHeight = 22.sp
                     )
                 }
             }
         }
 
-        // Navigation Tabs (المشاريع التشاركية vs أبواب الأجر)
+        // 2. Navigation Tabs (مشاريع الصدقة الجارية vs أبواب الخير)
         item(key = "tabs") {
             TabRow(
                 selectedTabIndex = selectedTab,
                 containerColor = MaterialTheme.colorScheme.surface,
-                contentColor = EmeraldDeep
+                contentColor = GoldDark
             ) {
                 Tab(
                     selected = selectedTab == 0,
@@ -137,7 +148,8 @@ fun GoodDeedsScreen(
                         Text(
                             text = "مشاريع الصدقة الجارية",
                             fontWeight = if (selectedTab == 0) FontWeight.Bold else FontWeight.Normal,
-                            fontSize = 13.sp
+                            fontSize = 13.sp,
+                            color = if (selectedTab == 0) titleColor() else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
                         )
                     }
                 )
@@ -146,150 +158,74 @@ fun GoodDeedsScreen(
                     onClick = { selectedTab = 1 },
                     text = {
                         Text(
-                            text = "أبواب الخير وثوابها",
+                            text = "أبواب الخير",
                             fontWeight = if (selectedTab == 1) FontWeight.Bold else FontWeight.Normal,
-                            fontSize = 13.sp
+                            fontSize = 13.sp,
+                            color = if (selectedTab == 1) titleColor() else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
                         )
                     }
                 )
             }
         }
 
+        // 3. Tab Contents
         if (selectedTab == 0) {
-            // Explanatory Banner for Elderly Users
-            item(key = "projects_intro") {
-                Card(
-                    shape = RoundedCornerShape(16.dp),
-                    colors = CardDefaults.cardColors(containerColor = EmeraldLight),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Row(
-                        modifier = Modifier.padding(14.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Surface(
-                            shape = CircleShape,
-                            color = EmeraldDeep,
-                            modifier = Modifier.size(36.dp)
-                        ) {
-                            Box(contentAlignment = Alignment.Center) {
-                                Icon(
-                                    imageVector = Icons.Default.WaterDrop,
-                                    contentDescription = null,
-                                    tint = GoldChampagne,
-                                    modifier = Modifier.size(20.dp)
-                                )
-                            }
-                        }
-                        Spacer(modifier = Modifier.width(12.dp))
-                        Text(
-                            text = "نحن نتكفل بالتنفيذ الميداني ونوفر لك إمكانية المساهمة بأسهم ميسرة لتنال أجر الصدقة الجارية لك أو لوالديك.",
-                            fontSize = 12.sp,
-                            color = EmeraldDeep,
-                            lineHeight = 18.sp,
-                            fontWeight = FontWeight.Medium
-                        )
-                    }
-                }
-            }
-
-            // Projects List
+            // مشاريع الصدقة الجارية التشاركية
             items(projects, key = { it.id }) { project ->
                 CharityProjectCard(
                     project = project,
-                    onPledgeClick = { selectedProjectForPledge = project }
+                    onDonateClick = {
+                        selectedProjectForDonation = project
+                        destinationNote = project.title
+                    }
                 )
             }
         } else {
-            // Reminder Toggle Card
-            item(key = "reminder_card") {
-                Card(
-                    shape = RoundedCornerShape(18.dp),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .border(1.dp, GoldChampagne.copy(alpha = 0.5f), RoundedCornerShape(18.dp))
-                ) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(16.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Row(
-                            modifier = Modifier.weight(1f),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Surface(
-                                shape = CircleShape,
-                                color = GoldChampagne.copy(alpha = 0.2f),
-                                modifier = Modifier.size(42.dp)
-                            ) {
-                                Box(contentAlignment = Alignment.Center) {
-                                    Icon(
-                                        imageVector = Icons.Default.NotificationsActive,
-                                        contentDescription = null,
-                                        tint = GoldDark,
-                                        modifier = Modifier.size(22.dp)
-                                    )
-                                }
-                            }
-                            Spacer(modifier = Modifier.width(12.dp))
-                            Column {
-                                Text(
-                                    text = "تذكير يومي بعمل صالح",
-                                    style = MaterialTheme.typography.titleMedium,
-                                    fontWeight = FontWeight.Bold,
-                                    color = EmeraldDeep
-                                )
-                                Text(
-                                    text = "إشعار خفيف يذكرك بباب من أبواب الخير كل صباح",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.65f)
-                                )
-                            }
-                        }
-
-                        Switch(
-                            checked = dailyReminderEnabled,
-                            onCheckedChange = { dailyReminderEnabled = it },
-                            colors = SwitchDefaults.colors(
-                                checkedThumbColor = Color.White,
-                                checkedTrackColor = EmeraldDeep
-                            )
-                        )
-                    }
-                }
-            }
-
-            // Deed Cards with Hadith Evidence
+            // أبواب الخير والفضائل النبوية
             items(deeds, key = { it.id }) { deed ->
                 GoodDeedCard(deed = deed)
             }
         }
     }
 
-    // Pledge Share Dialog
-    selectedProjectForPledge?.let { proj ->
+    // Modal Donation Dialog
+    selectedProjectForDonation?.let { proj ->
         AlertDialog(
-            onDismissRequest = { selectedProjectForPledge = null },
+            onDismissRequest = { selectedProjectForDonation = null },
             title = {
-                Text(
-                    text = "حجز سهم في ${proj.title}",
-                    fontWeight = FontWeight.Bold,
-                    color = EmeraldDeep
-                )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Default.VolunteerActivism, contentDescription = null, tint = GoldBright)
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = "المساهمة في ${proj.title}",
+                        fontWeight = FontWeight.Bold,
+                        color = titleColor()
+                    )
+                }
             },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Text(
-                        text = "قيمة السهم الواحد: ${proj.sharePrice} ج.م",
-                        fontWeight = FontWeight.SemiBold,
-                        color = GoldDark,
-                        fontSize = 13.sp
-                    )
+                    Surface(
+                        shape = RoundedCornerShape(10.dp),
+                        color = EmeraldDeep,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Column(modifier = Modifier.padding(12.dp)) {
+                            Text(
+                                text = "رقم التحويل المعتمد (فودافون كاش / إنستاباي للمسجد):",
+                                fontSize = 11.sp,
+                                color = GoldChampagne,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                            Spacer(modifier = Modifier.height(2.dp))
+                            Text(
+                                text = "01023456789",
+                                fontSize = 18.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color.White
+                            )
+                        }
+                    }
 
                     OutlinedTextField(
                         value = donorName,
@@ -302,86 +238,77 @@ fun GoodDeedsScreen(
                     OutlinedTextField(
                         value = donorPhone,
                         onValueChange = { donorPhone = it },
-                        label = { Text("رقم الهاتف للتواصل والتأكيد") },
+                        label = { Text("رقم الهاتف المحول منه (للتحقق)") },
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth()
                     )
 
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(text = "عدد الأسهم:", fontSize = 13.sp)
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Button(
-                                onClick = { if (sharesCount > 1) sharesCount-- },
-                                colors = ButtonDefaults.buttonColors(containerColor = EmeraldLight),
-                                shape = CircleShape,
-                                modifier = Modifier.size(36.dp),
-                                contentPadding = PaddingValues(0.dp)
-                            ) {
-                                Text("-", color = EmeraldDeep, fontWeight = FontWeight.Bold, fontSize = 18.sp)
-                            }
-                            Spacer(modifier = Modifier.width(12.dp))
-                            Text(text = "$sharesCount", fontWeight = FontWeight.Bold, fontSize = 16.sp)
-                            Spacer(modifier = Modifier.width(12.dp))
-                            Button(
-                                onClick = { sharesCount++ },
-                                colors = ButtonDefaults.buttonColors(containerColor = EmeraldDeep),
-                                shape = CircleShape,
-                                modifier = Modifier.size(36.dp),
-                                contentPadding = PaddingValues(0.dp)
-                            ) {
-                                Text("+", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 18.sp)
-                            }
-                        }
-                    }
+                    OutlinedTextField(
+                        value = destinationNote,
+                        onValueChange = { destinationNote = it },
+                        label = { Text("الجهة / المسجد المراد التبرع له") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+
+                    OutlinedTextField(
+                        value = donationAmount,
+                        onValueChange = { donationAmount = it },
+                        label = { Text("المبلغ المحول (ج.م)") },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
+                    )
 
                     Text(
-                        text = "المبلغ الإجمالي للمساهمة: ${sharesCount * proj.sharePrice} ج.م",
-                        fontWeight = FontWeight.Bold,
-                        color = EmeraldDeep,
-                        fontSize = 13.sp
+                        text = "ملاحظة: يتم تحديث أسهم المساهمة في التطبيق فور مطابقة التحويل المالي لضمان الأمانة والشفافية.",
+                        fontSize = 10.sp,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.65f),
+                        lineHeight = 15.sp
                     )
                 }
             },
             confirmButton = {
                 Button(
                     onClick = {
-                        repository.pledgeShare(proj.id, sharesCount)
-                        selectedProjectForPledge = null
-                        showSuccessToast = true
+                        val amount = donationAmount.toIntOrNull() ?: 100
+                        val shares = (amount / 100).coerceAtLeast(1)
+                        repository.pledgeShare(proj.id, shares)
+                        selectedProjectForDonation = null
+                        showSuccessDialog = true
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = EmeraldDeep)
                 ) {
-                    Text("تأكيد المساهمة", color = Color.White)
+                    Text("تأكيد المساهمة", color = Color.White, fontWeight = FontWeight.Bold)
                 }
             },
             dismissButton = {
-                TextButton(onClick = { selectedProjectForPledge = null }) {
-                    Text("إلغاء", color = Color.Gray)
+                TextButton(onClick = { selectedProjectForDonation = null }) {
+                    Text("إلغاء", color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f))
                 }
             }
         )
     }
 
-    if (showSuccessToast) {
+    if (showSuccessDialog) {
         AlertDialog(
-            onDismissRequest = { showSuccessToast = false },
+            onDismissRequest = { showSuccessDialog = false },
             title = {
-                Text("تقبل الله طاعتكم", fontWeight = FontWeight.Bold, color = EmeraldDeep)
+                Text("تقبل الله صدقتكم وطاعتكم", fontWeight = FontWeight.Bold, color = titleColor())
             },
             text = {
-                Text("تم تسجيل مساهمتكم بنجاح وسيتواصل معكم فريق غِراس لإتمام الإجراء وإرسال توثيق التنفيذ بإذن الله.")
+                Text(
+                    text = "تم تسجيل طلب مساهمتكم بنجاح. سيتم مراجعة التحويل وتحديث أسهم المشروع فوراً بإذن الله. نسأل الله أن يجعلها صدقة جارية في ميزان حسناتكم.",
+                    lineHeight = 22.sp
+                )
             },
             confirmButton = {
                 Button(
-                    onClick = { showSuccessToast = false },
+                    onClick = { showSuccessDialog = false },
                     colors = ButtonDefaults.buttonColors(containerColor = EmeraldDeep)
                 ) {
-                    Text("تم", color = Color.White)
+                    Text("الحمد لله", color = Color.White)
                 }
             }
         )
@@ -391,7 +318,7 @@ fun GoodDeedsScreen(
 @Composable
 private fun CharityProjectCard(
     project: CharityProject,
-    onPledgeClick: () -> Unit
+    onDonateClick: () -> Unit
 ) {
     val progress = (project.collectedAmount.toFloat() / project.targetAmount.toFloat()).coerceIn(0f, 1f)
     val percentage = (progress * 100).toInt()
@@ -399,7 +326,8 @@ private fun CharityProjectCard(
     Card(
         shape = RoundedCornerShape(20.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.5.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.15f)),
         modifier = Modifier.fillMaxWidth()
     ) {
         Column(modifier = Modifier.padding(18.dp)) {
@@ -411,15 +339,15 @@ private fun CharityProjectCard(
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Surface(
                         shape = CircleShape,
-                        color = GoldChampagne.copy(alpha = 0.2f),
-                        modifier = Modifier.size(38.dp)
+                        color = GoldChampagne.copy(alpha = 0.15f),
+                        modifier = Modifier.size(42.dp)
                     ) {
                         Box(contentAlignment = Alignment.Center) {
                             Icon(
-                                imageVector = if (project.category.contains("ماء")) Icons.Default.WaterDrop else Icons.Default.Mosque,
+                                imageVector = if (project.category.contains("سقيا")) Icons.Default.WaterDrop else Icons.Default.Mosque,
                                 contentDescription = null,
                                 tint = GoldDark,
-                                modifier = Modifier.size(20.dp)
+                                modifier = Modifier.size(22.dp)
                             )
                         }
                     }
@@ -429,11 +357,11 @@ private fun CharityProjectCard(
                             text = project.title,
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold,
-                            color = EmeraldDeep
+                            color = titleColor()
                         )
                         Text(
                             text = project.location,
-                            style = MaterialTheme.typography.bodySmall,
+                            style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
                         )
                     }
@@ -443,12 +371,13 @@ private fun CharityProjectCard(
                     shape = RoundedCornerShape(8.dp),
                     color = EmeraldLight
                 ) {
+                    val supporters = (project.collectedAmount / project.sharePrice.coerceAtLeast(1)).toInt()
                     Text(
-                        text = "$percentage%",
+                        text = "$supporters مساهم",
+                        color = EmeraldDeep,
                         fontSize = 11.sp,
                         fontWeight = FontWeight.Bold,
-                        color = EmeraldDeep,
-                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
                     )
                 }
             }
@@ -457,12 +386,33 @@ private fun CharityProjectCard(
 
             Text(
                 text = project.description,
-                style = MaterialTheme.typography.bodyMedium,
-                fontSize = 13.sp,
-                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f)
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.75f),
+                lineHeight = 20.sp
             )
 
             Spacer(modifier = Modifier.height(14.dp))
+
+            // Progress Section
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text(
+                    text = "تم جمع ${project.collectedAmount} ج.م من أصل ${project.targetAmount} ج.م",
+                    style = MaterialTheme.typography.bodySmall,
+                    fontWeight = FontWeight.Bold,
+                    color = titleColor()
+                )
+                Text(
+                    text = "$percentage%",
+                    style = MaterialTheme.typography.bodySmall,
+                    fontWeight = FontWeight.Bold,
+                    color = GoldDark
+                )
+            }
+
+            Spacer(modifier = Modifier.height(6.dp))
 
             LinearProgressIndicator(
                 progress = { progress },
@@ -471,50 +421,25 @@ private fun CharityProjectCard(
                     .height(8.dp)
                     .clip(RoundedCornerShape(4.dp)),
                 color = EmeraldDeep,
-                trackColor = Color.LightGray.copy(alpha = 0.35f),
+                trackColor = MaterialTheme.colorScheme.surfaceVariant,
                 strokeCap = StrokeCap.Round
             )
 
-            Spacer(modifier = Modifier.height(8.dp))
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                Text(
-                    text = "تم جمع: ${project.collectedAmount} ج.م",
-                    fontSize = 11.sp,
-                    color = EmeraldDeep,
-                    fontWeight = FontWeight.SemiBold
-                )
-                Text(
-                    text = "الهدف: ${project.targetAmount} ج.م",
-                    fontSize = 11.sp,
-                    color = Color.Gray
-                )
-            }
-
             Spacer(modifier = Modifier.height(14.dp))
 
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+            // Donate Button
+            Button(
+                onClick = onDonateClick,
+                colors = ButtonDefaults.buttonColors(containerColor = EmeraldDeep),
+                shape = RoundedCornerShape(12.dp),
+                modifier = Modifier.fillMaxWidth()
             ) {
                 Text(
-                    text = "السهم: ${project.sharePrice} ج.م",
+                    text = "تبرع للمشروع الآن",
+                    color = Color.White,
                     fontWeight = FontWeight.Bold,
-                    color = GoldDark,
                     fontSize = 13.sp
                 )
-
-                Button(
-                    onClick = onPledgeClick,
-                    colors = ButtonDefaults.buttonColors(containerColor = EmeraldDeep),
-                    shape = RoundedCornerShape(12.dp)
-                ) {
-                    Text("حجز سهم الآن", color = Color.White, fontSize = 12.sp)
-                }
             }
         }
     }
@@ -523,73 +448,88 @@ private fun CharityProjectCard(
 @Composable
 private fun GoodDeedCard(deed: GoodDeedDoor) {
     Card(
-        shape = RoundedCornerShape(20.dp),
+        shape = RoundedCornerShape(18.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.15f)),
         modifier = Modifier.fillMaxWidth()
     ) {
         Column(modifier = Modifier.padding(18.dp)) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Surface(
-                    shape = CircleShape,
-                    color = EmeraldDeep.copy(alpha = 0.1f),
-                    modifier = Modifier.size(38.dp)
-                ) {
-                    Box(contentAlignment = Alignment.Center) {
-                        Icon(
-                            imageVector = Icons.Default.Star,
-                            contentDescription = null,
-                            tint = EmeraldDeep,
-                            modifier = Modifier.size(20.dp)
-                        )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Surface(
+                        shape = CircleShape,
+                        color = GoldChampagne.copy(alpha = 0.15f),
+                        modifier = Modifier.size(38.dp)
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Icon(
+                                imageVector = Icons.Default.Star,
+                                contentDescription = null,
+                                tint = GoldDark,
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
                     }
-                }
-                Spacer(modifier = Modifier.width(10.dp))
-                Column {
+                    Spacer(modifier = Modifier.width(10.dp))
                     Text(
                         text = deed.title,
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
-                        color = EmeraldDeep
+                        color = titleColor()
                     )
+                }
+
+                Surface(
+                    shape = RoundedCornerShape(8.dp),
+                    color = EmeraldLight
+                ) {
                     Text(
-                        text = deed.description,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                        text = "باب عظيم من الخير",
+                        color = EmeraldDeep,
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
                     )
                 }
             }
 
-            Spacer(modifier = Modifier.height(14.dp))
+            Spacer(modifier = Modifier.height(10.dp))
 
+            Text(
+                text = deed.description,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.75f),
+                lineHeight = 20.sp
+            )
+
+            Spacer(modifier = Modifier.height(10.dp))
+
+            // Hadith Evidence Box
             Surface(
-                shape = RoundedCornerShape(14.dp),
-                color = MaterialTheme.colorScheme.background,
+                shape = RoundedCornerShape(10.dp),
+                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
+                border = BorderStroke(1.dp, GoldChampagne.copy(alpha = 0.3f)),
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Column(modifier = Modifier.padding(14.dp)) {
+                Column(modifier = Modifier.padding(12.dp)) {
                     Text(
-                        text = "فضل هذا العمل وثوابه:",
-                        style = MaterialTheme.typography.labelMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = GoldDark
+                        text = deed.rewardHadith,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        lineHeight = 20.sp,
+                        color = titleColor()
                     )
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
-                        text = deed.rewardHadith,
-                        style = MaterialTheme.typography.bodyMedium,
-                        lineHeight = 24.sp,
-                        fontWeight = FontWeight.Medium,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                    Spacer(modifier = Modifier.height(6.dp))
-                    Text(
-                        text = deed.source,
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
+                        text = "المصدر: ${deed.source}",
+                        fontSize = 10.sp,
+                        color = GoldDark,
+                        fontWeight = FontWeight.Bold
                     )
                 }
             }

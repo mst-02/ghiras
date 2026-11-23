@@ -5,9 +5,11 @@ import android.os.Build
 import android.os.VibrationEffect
 import android.os.Vibrator
 import android.os.VibratorManager
+import android.widget.Toast
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -29,10 +31,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowForward
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Clear
-import androidx.compose.material.icons.filled.FormatSize
+import androidx.compose.material.icons.filled.FormatListNumbered
 import androidx.compose.material.icons.filled.RestartAlt
 import androidx.compose.material.icons.filled.Shuffle
 import androidx.compose.material.icons.filled.Tune
@@ -44,8 +43,6 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Surface
@@ -90,28 +87,32 @@ fun TasbeehScreen(
 ) {
     val context = LocalContext.current
 
-    val initialPhrases = listOf(
-        "سُبْحَانَ اللَّهِ",
-        "الْحَمْدُ لِلَّهِ",
-        "لَا إِلَهَ إِلَّا اللَّهُ",
-        "اللَّهُ أَكْبَرُ",
-        "أَسْتَغْفِرُ اللَّهَ الْعَظِيمَ وَأَتُوبُ إِلَيْهِ",
-        "لَا حَوْلَ وَلَا قُوَّةَ إِلَّا بِاللَّهِ الْعَلِيِّ الْعَظِيمِ",
-        "سُبْحَانَ اللَّهِ وَبِحَمْدِهِ ، سُبْحَانَ اللَّهِ الْعَظِيمِ",
-        "اللَّهُمَّ صَلِّ وَسَلِّمْ عَلَى نَبِيِّنَا مُحَمَّدٍ",
-        "لَا إِلَهَ إِلَّا أَنْتَ سُبْحَانَكَ إِنِّي كُنْتُ مِنَ الظَّالِمِينَ",
-        "حَسْبُنَا اللَّهُ وَنِعْمَ الْوَكِيلُ",
-        "يَا حَيُّ يَا قَيُّومُ بِرَحْمَتِكَ أَسْتَغِيثُ"
+    val defaultPhrases = listOf(
+        "سُبْحَانَ اللَّهِ" to 33,
+        "الْحَمْدُ لِلَّهِ" to 33,
+        "لَا إِلَهَ إِلَّا اللَّهُ" to 100,
+        "اللَّهُ أَكْبَرُ" to 33,
+        "أَسْتَغْفِرُ اللَّهَ الْعَظِيمَ وَأَتُوبُ إِلَيْهِ" to 100,
+        "لَا حَوْلَ وَلَا قُوَّةَ إِلَّا بِاللَّهِ الْعَلِيِّ الْعَظِيمِ" to 33,
+        "سُبْحَانَ اللَّهِ وَبِحَمْدِهِ ، سُبْحَانَ اللَّهِ الْعَظِيمِ" to 100,
+        "اللَّهُمَّ صَلِّ وَسَلِّمْ عَلَى نَبِيِّنَا مُحَمَّدٍ" to 100,
+        "لَا إِلَهَ إِلَّا أَنْتَ سُبْحَانَكَ إِنِّي كُنْتُ مِنَ الظَّالِمِينَ" to 33,
+        "حَسْبُنَا اللَّهُ وَنِعْمَ الْوَكِيلُ" to 33,
+        "يَا حَيُّ يَا قَيُّومُ بِرَحْمَتِكَ أَسْتَغِيثُ" to 33
     )
-    val phrases = remember { mutableStateListOf(*initialPhrases.toTypedArray()) }
+
     val customAzkar by azkarRepository.customAzkarList.collectAsState()
 
-    var currentZekr by remember { mutableStateOf(phrases.first()) }
+    var currentZekr by remember { mutableStateOf(defaultPhrases.first().first) }
+    var targetCount by remember { mutableIntStateOf(defaultPhrases.first().second) }
     var count by remember { mutableIntStateOf(0) }
     var totalRounds by remember { mutableIntStateOf(0) }
     var isPressed by remember { mutableStateOf(false) }
 
-    // Bead Size Controller (180dp to 300dp)
+    // Dialog state to choose Zekr
+    var showZekrPicker by remember { mutableStateOf(false) }
+
+    // Bead Size Controller (180dp to 280dp)
     var circleSizeDp by remember { mutableFloatStateOf(240f) }
     var showControllerPanel by remember { mutableStateOf(false) }
 
@@ -134,6 +135,13 @@ fun TasbeehScreen(
         } catch (_: Exception) {}
     }
 
+    fun resetAllCounters() {
+        count = 0
+        totalRounds = 0
+        userRepository.resetTasbeeh()
+        Toast.makeText(context, "تم تصفير العداد والمجموع الكلي بنجاح 🔄", Toast.LENGTH_SHORT).show()
+    }
+
     Column(
         modifier = modifier
             .fillMaxSize()
@@ -142,38 +150,49 @@ fun TasbeehScreen(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.SpaceBetween
     ) {
-        // Top Action Bar: زر تحكم مدمج وأنيق على اليسار يجمع التصفير وتغيير الحجم
+        // Top Action Bar: تحكم الحجم + تصفير مباشر + الهدف
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Consolidated Left Controller Button (Reset + Bead Size)
-            Surface(
-                shape = RoundedCornerShape(12.dp),
-                color = if (showControllerPanel) GoldChampagne.copy(alpha = 0.25f) else MaterialTheme.colorScheme.surface,
-                border = androidx.compose.foundation.BorderStroke(1.dp, GoldChampagne.copy(alpha = 0.5f)),
-                modifier = Modifier
-                    .clip(RoundedCornerShape(12.dp))
-                    .clickable { showControllerPanel = !showControllerPanel }
-            ) {
-                Row(
-                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
-                    verticalAlignment = Alignment.CenterVertically
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                // زر تصفير سريع ومباشر
+                Surface(
+                    shape = RoundedCornerShape(12.dp),
+                    color = Color(0xFFC62828).copy(alpha = 0.12f),
+                    border = BorderStroke(1.dp, Color(0xFFC62828).copy(alpha = 0.5f)),
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(12.dp))
+                        .clickable { resetAllCounters() }
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.Tune,
-                        contentDescription = "التحكم في السبحة",
-                        tint = GoldDark,
-                        modifier = Modifier.size(18.dp)
-                    )
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Text(
-                        text = "التحكم والتصفير",
-                        color = titleColor(),
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 12.sp
-                    )
+                    Row(
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 7.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(Icons.Default.RestartAlt, contentDescription = "تصفير", tint = Color(0xFFC62828), modifier = Modifier.size(16.dp))
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("تصفير العداد", color = Color(0xFFC62828), fontWeight = FontWeight.Bold, fontSize = 11.sp)
+                    }
+                }
+
+                // زر التحكم في حجم الحبة
+                Surface(
+                    shape = RoundedCornerShape(12.dp),
+                    color = if (showControllerPanel) GoldChampagne.copy(alpha = 0.25f) else MaterialTheme.colorScheme.surface,
+                    border = BorderStroke(1.dp, GoldChampagne.copy(alpha = 0.5f)),
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(12.dp))
+                        .clickable { showControllerPanel = !showControllerPanel }
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 7.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(Icons.Default.Tune, contentDescription = null, tint = GoldDark, modifier = Modifier.size(16.dp))
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("الحجم", color = titleColor(), fontWeight = FontWeight.Bold, fontSize = 11.sp)
+                    }
                 }
             }
 
@@ -183,7 +202,7 @@ fun TasbeehScreen(
                 color = EmeraldLight
             ) {
                 Text(
-                    text = "الهدف: 33 تسبيحة",
+                    text = "الهدف: $targetCount",
                     color = EmeraldDeep,
                     fontSize = 11.sp,
                     fontWeight = FontWeight.Bold,
@@ -192,46 +211,25 @@ fun TasbeehScreen(
             }
         }
 
-        // Consolidated Controller Panel (Slider + Quick Reset)
+        // Consolidated Controller Panel (Slider)
         AnimatedVisibility(visible = showControllerPanel) {
             Card(
                 shape = RoundedCornerShape(18.dp),
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                 elevation = CardDefaults.cardElevation(defaultElevation = 3.dp),
-                border = androidx.compose.foundation.BorderStroke(1.dp, GoldChampagne.copy(alpha = 0.4f)),
+                border = BorderStroke(1.dp, GoldChampagne.copy(alpha = 0.4f)),
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Column(
-                    modifier = Modifier.padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                    modifier = Modifier.padding(14.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            text = "حجم حبة السبحة: ${circleSizeDp.toInt()}dp",
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = titleColor()
-                        )
-
-                        // Reset button inside the controller
-                        Button(
-                            onClick = {
-                                count = 0
-                                totalRounds = 0
-                            },
-                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFC62828)),
-                            shape = RoundedCornerShape(8.dp),
-                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp)
-                        ) {
-                            Icon(Icons.Default.RestartAlt, contentDescription = null, tint = Color.White, modifier = Modifier.size(16.dp))
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text("تصفير العداد", color = Color.White, fontSize = 11.sp)
-                        }
-                    }
+                    Text(
+                        text = "حجم حبة السبحة: ${circleSizeDp.toInt()}dp",
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = titleColor()
+                    )
 
                     Slider(
                         value = circleSizeDp,
@@ -247,13 +245,16 @@ fun TasbeehScreen(
             }
         }
 
-        // Dhikr Box with Shuffle Button on the Left side!
+        // Dhikr Box (الضغط عليه يفتح قائمة كاملة بالأذكار والأذكار المخصصة)
         Card(
             shape = RoundedCornerShape(20.dp),
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
             elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-            border = androidx.compose.foundation.BorderStroke(1.2.dp, GoldChampagne.copy(alpha = 0.6f)),
-            modifier = Modifier.fillMaxWidth()
+            border = BorderStroke(1.2.dp, GoldChampagne.copy(alpha = 0.6f)),
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(20.dp))
+                .clickable { showZekrPicker = true }
         ) {
             Row(
                 modifier = Modifier
@@ -270,17 +271,19 @@ fun TasbeehScreen(
                         .size(42.dp)
                         .clip(CircleShape)
                         .clickable {
-                            val allAvailable = phrases + customAzkar.map { it.arabicText }
-                            currentZekr = allAvailable.random()
+                            val allCombined = defaultPhrases + customAzkar.map { it.text to it.count }
+                            val picked = allCombined.random()
+                            currentZekr = picked.first
+                            targetCount = picked.second
                             count = 0
                         }
                 ) {
                     Box(contentAlignment = Alignment.Center) {
                         Icon(
                             imageVector = Icons.Default.Shuffle,
-                            contentDescription = "تبديل الذكر",
+                            contentDescription = "تبديل عشوائي",
                             tint = GoldDark,
-                            modifier = Modifier.size(22.dp)
+                            modifier = Modifier.size(20.dp)
                         )
                     }
                 }
@@ -292,12 +295,16 @@ fun TasbeehScreen(
                     modifier = Modifier.weight(1f),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    Text(
-                        text = "الذكر الحالي:",
-                        fontSize = 11.sp,
-                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
-                    )
-                    Spacer(modifier = Modifier.height(2.dp))
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            text = "الذكر الحالي (اضغط لتغيير الذكر):",
+                            fontSize = 11.sp,
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.65f)
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Icon(Icons.Default.FormatListNumbered, contentDescription = null, tint = GoldDark, modifier = Modifier.size(13.dp))
+                    }
+                    Spacer(modifier = Modifier.height(3.dp))
                     Text(
                         text = currentZekr,
                         style = MaterialTheme.typography.titleMedium,
@@ -307,11 +314,11 @@ fun TasbeehScreen(
                     )
                 }
 
-                Spacer(modifier = Modifier.width(42.dp)) // balance spacing with left button
+                Spacer(modifier = Modifier.width(42.dp))
             }
         }
 
-        // Stats Display (Count & Total Rounds)
+        // Stats Display (Count & Total Rounds & Total Tasbeeh)
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceEvenly
@@ -319,7 +326,7 @@ fun TasbeehScreen(
             Surface(
                 shape = RoundedCornerShape(14.dp),
                 color = MaterialTheme.colorScheme.surface,
-                border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.15f)),
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.15f)),
                 modifier = Modifier.padding(4.dp)
             ) {
                 Column(
@@ -334,7 +341,7 @@ fun TasbeehScreen(
             Surface(
                 shape = RoundedCornerShape(14.dp),
                 color = MaterialTheme.colorScheme.surface,
-                border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.15f)),
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.15f)),
                 modifier = Modifier.padding(4.dp)
             ) {
                 Column(
@@ -348,23 +355,22 @@ fun TasbeehScreen(
             }
         }
 
-        // The Central Interactive Bead
+        // The Central Interactive Bead (تصميم زمردي فاخر بدون هالة بيضاء مزعجة)
         Box(
             modifier = Modifier
                 .size(circleSizeDp.dp)
                 .scale(scale)
-                .shadow(elevation = 16.dp, shape = CircleShape)
+                .shadow(elevation = 14.dp, shape = CircleShape)
                 .clip(CircleShape)
                 .background(
-                    Brush.radialGradient(
+                    Brush.verticalGradient(
                         colors = listOf(
-                            EmeraldLight,
                             EmeraldMedium,
                             EmeraldDeep
                         )
                     )
                 )
-                .border(4.dp, GoldChampagne, CircleShape)
+                .border(3.5.dp, GoldBright, CircleShape)
                 .clickable(
                     interactionSource = remember { MutableInteractionSource() },
                     indication = null
@@ -373,7 +379,7 @@ fun TasbeehScreen(
                     count++
                     userRepository.incrementTasbeeh()
 
-                    if (count >= 33) {
+                    if (count >= targetCount) {
                         count = 0
                         totalRounds++
                     }
@@ -395,11 +401,90 @@ fun TasbeehScreen(
                     text = "اضغط للتسبيح",
                     fontSize = 12.sp,
                     color = GoldChampagne,
-                    fontWeight = FontWeight.Medium
+                    fontWeight = FontWeight.SemiBold
                 )
             }
         }
 
         Spacer(modifier = Modifier.height(10.dp))
+    }
+
+    // Modal Dialog to Select from All Azkar + Custom Azkar
+    if (showZekrPicker) {
+        val allCombined = defaultPhrases + customAzkar.map { it.text to it.count }
+
+        AlertDialog(
+            onDismissRequest = { showZekrPicker = false },
+            title = {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Default.FormatListNumbered, contentDescription = null, tint = GoldChampagne)
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("اختر الذكر المطلوب", fontWeight = FontWeight.Bold, color = titleColor())
+                }
+            },
+            text = {
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(380.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    items(allCombined) { pair ->
+                        val zText = pair.first
+                        val zTarget = pair.second
+                        val isSelected = currentZekr == zText
+
+                        Surface(
+                            shape = RoundedCornerShape(12.dp),
+                            color = if (isSelected) EmeraldLight else MaterialTheme.colorScheme.surface,
+                            border = BorderStroke(1.dp, if (isSelected) GoldBright else MaterialTheme.colorScheme.outline.copy(alpha = 0.15f)),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(12.dp))
+                                .clickable {
+                                    currentZekr = zText
+                                    targetCount = zTarget
+                                    count = 0
+                                    showZekrPicker = false
+                                }
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 14.dp, vertical = 11.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = zText,
+                                    fontSize = 13.sp,
+                                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                                    color = if (isSelected) EmeraldDeep else MaterialTheme.colorScheme.onSurface,
+                                    modifier = Modifier.weight(1f)
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Surface(
+                                    shape = RoundedCornerShape(6.dp),
+                                    color = if (isSelected) GoldChampagne else MaterialTheme.colorScheme.surfaceVariant
+                                ) {
+                                    Text(
+                                        text = "$zTarget مرة",
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = if (isSelected) EmeraldDeep else MaterialTheme.colorScheme.onSurfaceVariant,
+                                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showZekrPicker = false }) {
+                    Text("إغلاق", color = titleColor(), fontWeight = FontWeight.Bold)
+                }
+            }
+        )
     }
 }

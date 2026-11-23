@@ -47,6 +47,7 @@ import androidx.compose.material.icons.filled.HelpOutline
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Mosque
+import androidx.compose.material.icons.filled.MyLocation
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.NotificationsActive
 import androidx.compose.material.icons.filled.Person
@@ -578,21 +579,6 @@ fun ProfileScreen(
                             }
                             Text("تغيير ←", color = GoldChampagne, fontSize = 12.sp, fontWeight = FontWeight.Bold)
                         }
-
-                        DropdownMenu(
-                            expanded = showGovernorateMenu,
-                            onDismissRequest = { showGovernorateMenu = false }
-                        ) {
-                            prayerRepository.EGYPT_GOVERNORATES.forEach { gov ->
-                                DropdownMenuItem(
-                                    text = { Text(gov.name) },
-                                    onClick = {
-                                        userRepository.setGovernorate(gov.name)
-                                        showGovernorateMenu = false
-                                    }
-                                )
-                            }
-                        }
                     }
                 }
             }
@@ -706,6 +692,120 @@ fun ProfileScreen(
             },
             confirmButton = {
                 TextButton(onClick = { showAvatarDialog = false }) {
+                    Text("إغلاق", color = titleColor(), fontWeight = FontWeight.Bold)
+                }
+            }
+        )
+    }
+
+    // Governorates Dialog (Wide, luxurious with GPS Auto option)
+    if (showGovernorateMenu) {
+        AlertDialog(
+            onDismissRequest = { showGovernorateMenu = false },
+            title = {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Default.LocationOn, contentDescription = null, tint = GoldChampagne)
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("اختر المحافظة أو الموقع", fontWeight = FontWeight.Bold, color = titleColor())
+                }
+            },
+            text = {
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(380.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    // Option 1: GPS Auto
+                    item(key = "gov_auto_gps") {
+                        val isAutoSelected = userProfile.selectedGovernorate.contains("GPS") || userProfile.selectedGovernorate.contains("تلقائي")
+                        Surface(
+                            shape = RoundedCornerShape(12.dp),
+                            color = if (isAutoSelected) EmeraldDeep else MaterialTheme.colorScheme.surfaceVariant,
+                            border = if (isAutoSelected) BorderStroke(1.5.dp, GoldBright) else null,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(12.dp))
+                                .clickable {
+                                    userRepository.setGovernorate("تحديد تلقائي عبر الموقع (GPS)")
+                                    showGovernorateMenu = false
+                                }
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 14.dp, vertical = 12.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(
+                                        imageVector = Icons.Default.MyLocation,
+                                        contentDescription = null,
+                                        tint = if (isAutoSelected) GoldBright else EmeraldDeep,
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(10.dp))
+                                    Column {
+                                        Text(
+                                            text = "تحديد تلقائي عبر الموقع (GPS)",
+                                            fontWeight = FontWeight.Bold,
+                                            fontSize = 13.sp,
+                                            color = if (isAutoSelected) Color.White else MaterialTheme.colorScheme.onSurface
+                                        )
+                                        Text(
+                                            text = "ضبط مواقيت الصلاة تلقائياً حسب مكانك الحالي",
+                                            fontSize = 10.sp,
+                                            color = if (isAutoSelected) GoldChampagne else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                                        )
+                                    }
+                                }
+                                if (isAutoSelected) {
+                                    Icon(Icons.Default.CheckCircle, contentDescription = null, tint = GoldBright, modifier = Modifier.size(20.dp))
+                                }
+                            }
+                        }
+                    }
+
+                    // Egyptian Governorates List
+                    items(prayerRepository.EGYPT_GOVERNORATES.filterNot { it.name.contains("GPS") || it.name.contains("تلقائي") }.size) { index ->
+                        val gov = prayerRepository.EGYPT_GOVERNORATES.filterNot { it.name.contains("GPS") || it.name.contains("تلقائي") }[index]
+                        val isSelected = userProfile.selectedGovernorate == gov.name
+                        Surface(
+                            shape = RoundedCornerShape(10.dp),
+                            color = if (isSelected) EmeraldLight else MaterialTheme.colorScheme.surface,
+                            border = BorderStroke(1.dp, if (isSelected) GoldBright else MaterialTheme.colorScheme.outline.copy(alpha = 0.15f)),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(10.dp))
+                                .clickable {
+                                    userRepository.setGovernorate(gov.name)
+                                    showGovernorateMenu = false
+                                }
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 14.dp, vertical = 11.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Text(
+                                    text = gov.name,
+                                    fontSize = 13.sp,
+                                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                                    color = if (isSelected) EmeraldDeep else MaterialTheme.colorScheme.onSurface
+                                )
+                                if (isSelected) {
+                                    Icon(Icons.Default.CheckCircle, contentDescription = null, tint = EmeraldDeep, modifier = Modifier.size(18.dp))
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showGovernorateMenu = false }) {
                     Text("إغلاق", color = titleColor(), fontWeight = FontWeight.Bold)
                 }
             }

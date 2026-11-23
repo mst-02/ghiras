@@ -1,6 +1,8 @@
 package com.islamic.noor.ui.home
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -59,7 +61,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -86,7 +90,20 @@ fun HomeScreen(
 ) {
     var isDuaRead by remember { mutableStateOf(false) }
     var isVerseFlipped by remember { mutableStateOf(false) }
+    var isHadithFlipped by remember { mutableStateOf(false) }
     var showVerseStoryDialog by remember { mutableStateOf(false) }
+
+    val verseRotation by animateFloatAsState(
+        targetValue = if (isVerseFlipped) 180f else 0f,
+        animationSpec = spring(stiffness = 500f),
+        label = "verse_flip"
+    )
+
+    val hadithRotation by animateFloatAsState(
+        targetValue = if (isHadithFlipped) 180f else 0f,
+        animationSpec = spring(stiffness = 500f),
+        label = "hadith_flip"
+    )
 
     LazyColumn(
         modifier = modifier
@@ -212,38 +229,44 @@ fun HomeScreen(
             ServicesGrid(onNavigate = onNavigate)
         }
 
-        // 5. آية وتدبر
+        // 5. آية وتدبر مع حركة تقليب ثلاثية الأبعاد 3D Flip
         item(key = "verse_reflection") {
             Card(
                 shape = RoundedCornerShape(20.dp),
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                 elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+                border = androidx.compose.foundation.BorderStroke(1.dp, GoldChampagne.copy(alpha = 0.4f)),
                 modifier = Modifier
                     .fillMaxWidth()
+                    .graphicsLayer {
+                        rotationY = verseRotation
+                        cameraDistance = 14 * density
+                    }
                     .clickable { isVerseFlipped = !isVerseFlipped }
             ) {
-                Column(modifier = Modifier.padding(18.dp)) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            text = "آية وتدبر",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold,
-                            color = titleColor()
-                        )
-                        Text(
-                            text = "سورة البقرة: 152",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
-                        )
-                    }
+                if (verseRotation <= 90f) {
+                    // الوجه الأمامي: الآية الكريمة
+                    Column(modifier = Modifier.padding(18.dp)) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "آية وتدبر",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = titleColor()
+                            )
+                            Text(
+                                text = "سورة البقرة: 152",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
+                            )
+                        }
 
-                    Spacer(modifier = Modifier.height(12.dp))
+                        Spacer(modifier = Modifier.height(12.dp))
 
-                    if (!isVerseFlipped) {
                         Text(
                             text = "«فَاذْكُرُونِي أَذْكُرْكُمْ وَاشْكُرُوا لِي وَلَا تَكْفُرُونِ»",
                             style = MaterialTheme.typography.bodyLarge,
@@ -256,39 +279,57 @@ fun HomeScreen(
                         )
                         Spacer(modifier = Modifier.height(8.dp))
                         Text(
-                            text = "اضغط على البطاقة لعرض التفسير والتدبر",
+                            text = "اضغط على البطاقة لقلبها وعرض التفسير والتدبر ↻",
                             style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
+                            color = GoldDark,
+                            fontWeight = FontWeight.Bold,
                             textAlign = TextAlign.Center,
                             modifier = Modifier.fillMaxWidth()
                         )
-                    } else {
-                        Column {
+                    }
+                } else {
+                    // الوجه الخلفي: التفسير والعِبرة (معكوس أفقياً ليكون النص طبيعياً)
+                    Column(
+                        modifier = Modifier
+                            .padding(18.dp)
+                            .graphicsLayer { rotationY = 180f }
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
                             Text(
-                                text = "التفسير الميسر:",
+                                text = "التفسير الميسر والتدبر",
                                 fontWeight = FontWeight.Bold,
                                 color = GoldChampagne,
                                 fontSize = 13.sp
                             )
-                            Spacer(modifier = Modifier.height(4.dp))
                             Text(
-                                text = "فاذكروني -أيها المؤمنون- بطاعتي وعبادتي أذكركم بالثواب والمغفرة، واشكروا لي نعمي الجليلة عليكم ولا تجحدوها. ومن ذكر الله في نفسه ذكره الله في نفسه، ومن ذكره في ملأ ذكره في ملأ خير منهم.",
-                                style = MaterialTheme.typography.bodyMedium,
-                                lineHeight = 24.sp,
-                                color = MaterialTheme.colorScheme.onSurface
+                                text = "اضغط للعودة ↻",
+                                fontSize = 11.sp,
+                                color = GoldDark,
+                                fontWeight = FontWeight.Bold
                             )
-                            Spacer(modifier = Modifier.height(10.dp))
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.End
+                        }
+                        Spacer(modifier = Modifier.height(6.dp))
+                        Text(
+                            text = "فاذكروني -أيها المؤمنون- بطاعتي وعبادتي أذكركم بالثواب والمغفرة، واشكروا لي نعمي الجليلة عليكم ولا تجحدوها. ومن كرم الله وفضله أنه من ذكره في نفسه ذكره في نفسه، ومن ذكره في ملأ ذكره في ملأ خير منهم وأبرك.",
+                            style = MaterialTheme.typography.bodyMedium,
+                            lineHeight = 24.sp,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.End
+                        ) {
+                            Button(
+                                onClick = { showVerseStoryDialog = true },
+                                colors = ButtonDefaults.buttonColors(containerColor = EmeraldDeep),
+                                shape = RoundedCornerShape(10.dp)
                             ) {
-                                Button(
-                                    onClick = { showVerseStoryDialog = true },
-                                    colors = ButtonDefaults.buttonColors(containerColor = EmeraldDeep),
-                                    shape = RoundedCornerShape(10.dp)
-                                ) {
-                                    Text("قصة الآية وعِبرتها", color = Color.White, fontSize = 11.sp)
-                                }
+                                Text("قصة الآية وعِبرتها", color = Color.White, fontSize = 11.sp)
                             }
                         }
                     }
@@ -296,48 +337,90 @@ fun HomeScreen(
             }
         }
 
-        // 6. من هدي النبوة
+        // 6. من هدي النبوة مع حركة تقليب ثلاثية الأبعاد 3D Flip
         item(key = "daily_hadith") {
             Card(
                 shape = RoundedCornerShape(20.dp),
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                 elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+                border = androidx.compose.foundation.BorderStroke(1.dp, GoldChampagne.copy(alpha = 0.4f)),
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clickable { onNavigate(Screen.Hadith.route) }
+                    .graphicsLayer {
+                        rotationY = hadithRotation
+                        cameraDistance = 14 * density
+                    }
+                    .clickable { isHadithFlipped = !isHadithFlipped }
             ) {
-                Column(modifier = Modifier.padding(18.dp)) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
+                if (hadithRotation <= 90f) {
+                    // الوجه الأمامي: متن الحديث الشريف
+                    Column(modifier = Modifier.padding(18.dp)) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "من هدي النبوة",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = titleColor()
+                            )
+                            Text(
+                                text = "اضغط لعرض الشرح ↻",
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = GoldDark
+                            )
+                        }
+                        Spacer(modifier = Modifier.height(10.dp))
                         Text(
-                            text = "من هدي النبوة",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold,
-                            color = titleColor()
+                            text = "قال رسول الله ﷺ: «كَلِمَتَانِ خَفِيفَتَانِ عَلَى اللِّسَانِ، ثَقِيلَتَانِ فِي الْمِيزَانِ، حَبِيبَتَانِ إِلَى الرَّحْمَنِ: سُبْحَانَ اللَّهِ وَبِحَمْدِهِ، سُبْحَانَ اللَّهِ الْعَظِيمِ».",
+                            style = MaterialTheme.typography.bodyMedium,
+                            lineHeight = 26.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.onSurface
                         )
+                        Spacer(modifier = Modifier.height(6.dp))
                         Text(
-                            text = "عرض الأحاديث ←",
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = GoldChampagne
+                            text = "متفق عليه (صحيح البخاري ومسلم)",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
                         )
                     }
-                    Spacer(modifier = Modifier.height(10.dp))
-                    Text(
-                        text = "قال رسول الله ﷺ: «كَلِمَتَانِ خَفِيفَتَانِ عَلَى اللِّسَانِ، ثَقِيلَتَانِ فِي الْمِيزَانِ، حَبِيبَتَانِ إِلَى الرَّحْمَنِ: سُبْحَانَ اللَّهِ وَبِحَمْدِهِ، سُبْحَانَ اللَّهِ الْعَظِيمِ».",
-                        style = MaterialTheme.typography.bodyMedium,
-                        lineHeight = 24.sp,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                    Spacer(modifier = Modifier.height(6.dp))
-                    Text(
-                        text = "صحيح البخاري ومسلم",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
-                    )
+                } else {
+                    // الوجه الخلفي: الشرح والقصة والعِبرة
+                    Column(
+                        modifier = Modifier
+                            .padding(18.dp)
+                            .graphicsLayer { rotationY = 180f }
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "شرح الحديث وقصته",
+                                fontWeight = FontWeight.Bold,
+                                color = GoldChampagne,
+                                fontSize = 13.sp
+                            )
+                            Text(
+                                text = "اضغط للعودة ↻",
+                                fontSize = 11.sp,
+                                color = GoldDark,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = "ختم به الإمام البخاري صحيحه، وفيه بيان سعة رحمة الله وفضله؛ حيث جعل كلمات يسيرة النطق تملأ الميزان حَسَنات يوم القيامة وتستوجب محبة الرحمن. وكان الصحابة يلهجون بها في مجالسهم وتجارتهم وصباحهم ومسائهم لثقلها العظيم عند الله.",
+                            style = MaterialTheme.typography.bodyMedium,
+                            lineHeight = 24.sp,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                    }
                 }
             }
         }
@@ -536,7 +619,10 @@ private fun LuxuryFeatureCard(
 
 @Composable
 private fun PrayerTimelineCard(onQiblaClick: () -> Unit) {
+    val context = LocalContext.current
     val userProfile by UserRepository.instance.userProfile.collectAsState()
+    val prayerTimes by QiblaAndPrayerRepository.instance.getPrayerTimesForToday(userProfile.selectedGovernorate).collectAsState(initial = emptyList())
+
     var livePrayerInfo by remember {
         mutableStateOf(QiblaAndPrayerRepository.instance.getNextPrayerLiveInfo(userProfile.selectedGovernorate))
     }
@@ -545,6 +631,22 @@ private fun PrayerTimelineCard(onQiblaClick: () -> Unit) {
         while (true) {
             livePrayerInfo = QiblaAndPrayerRepository.instance.getNextPrayerLiveInfo(userProfile.selectedGovernorate)
             delay(1000)
+        }
+    }
+
+    // Trigger vibration when next prayer arrives
+    LaunchedEffect(livePrayerInfo.prayerName, livePrayerInfo.remainingSeconds) {
+        if (livePrayerInfo.remainingSeconds <= 1L && userProfile.notificationsEnabled) {
+            try {
+                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
+                    val vm = context.getSystemService(android.content.Context.VIBRATOR_MANAGER_SERVICE) as? android.os.VibratorManager
+                    vm?.defaultVibrator?.vibrate(android.os.VibrationEffect.createWaveform(longArrayOf(0, 500, 300, 500), -1))
+                } else {
+                    @Suppress("DEPRECATION")
+                    val v = context.getSystemService(android.content.Context.VIBRATOR_SERVICE) as? android.os.Vibrator
+                    v?.vibrate(longArrayOf(0, 500, 300, 500), -1)
+                }
+            } catch (_: Exception) {}
         }
     }
 
@@ -631,16 +733,27 @@ private fun PrayerTimelineCard(onQiblaClick: () -> Unit) {
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // Prayer Timeline
+                // Prayer Timeline (Real-time computed astronomical times including Sunrise)
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    PrayerPill("الفجر", "04:58", false)
-                    PrayerPill("الظهر", "11:46", false)
-                    PrayerPill("العصر", "02:44", true) // Next active
-                    PrayerPill("المغرب", "05:04", false)
-                    PrayerPill("العشاء", "06:24", false)
+                    if (prayerTimes.isNotEmpty()) {
+                        prayerTimes.forEach { prayer ->
+                            PrayerPill(
+                                name = prayer.nameArabic,
+                                time = prayer.timeFormatted.replace(" ص", "").replace(" م", ""),
+                                isNext = prayer.isNext
+                            )
+                        }
+                    } else {
+                        PrayerPill("الفجر", "04:58", false)
+                        PrayerPill("الشروق", "06:25", false)
+                        PrayerPill("الظهر", "11:46", false)
+                        PrayerPill("العصر", "02:44", true)
+                        PrayerPill("المغرب", "05:04", false)
+                        PrayerPill("العشاء", "06:24", false)
+                    }
                 }
             }
         }
@@ -650,24 +763,26 @@ private fun PrayerTimelineCard(onQiblaClick: () -> Unit) {
 @Composable
 private fun PrayerPill(name: String, time: String, isNext: Boolean) {
     Surface(
-        shape = RoundedCornerShape(12.dp),
-        color = if (isNext) GoldChampagne else Color.White.copy(alpha = 0.12f),
-        modifier = Modifier.padding(2.dp)
+        shape = RoundedCornerShape(10.dp),
+        color = if (isNext) GoldChampagne else Color.White.copy(alpha = 0.14f),
+        border = if (isNext) androidx.compose.foundation.BorderStroke(1.2.dp, GoldBright) else null,
+        modifier = Modifier.padding(1.dp)
     ) {
         Column(
-            modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp),
+            modifier = Modifier.padding(horizontal = 6.dp, vertical = 6.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Text(
                 text = name,
                 color = if (isNext) EmeraldDeep else Color.White,
-                fontSize = 11.sp,
-                fontWeight = if (isNext) FontWeight.Bold else FontWeight.Normal
+                fontSize = 10.sp,
+                fontWeight = if (isNext) FontWeight.Bold else FontWeight.Medium
             )
+            Spacer(modifier = Modifier.height(2.dp))
             Text(
                 text = time,
-                color = if (isNext) EmeraldDeep else Color.White.copy(alpha = 0.85f),
-                fontSize = 10.sp,
+                color = if (isNext) EmeraldDeep else Color.White.copy(alpha = 0.9f),
+                fontSize = 9.sp,
                 fontWeight = FontWeight.SemiBold
             )
         }
