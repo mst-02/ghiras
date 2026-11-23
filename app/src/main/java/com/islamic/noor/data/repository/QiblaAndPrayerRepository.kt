@@ -1,10 +1,20 @@
 package com.islamic.noor.data.repository
 
+import com.batoulapps.adhan.CalculationMethod
+import com.batoulapps.adhan.Coordinates
+import com.batoulapps.adhan.Madhab
+import com.batoulapps.adhan.Prayer
+import com.batoulapps.adhan.PrayerTimes
+import com.batoulapps.adhan.data.DateComponents
 import com.islamic.noor.domain.model.PrayerTimeItem
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
+import java.text.SimpleDateFormat
+import java.util.Calendar
+import java.util.Date
+import java.util.Locale
 import kotlin.math.atan2
 import kotlin.math.cos
 import kotlin.math.sin
@@ -13,8 +23,14 @@ data class GovernorateLocation(
     val name: String,
     val lat: Double,
     val lng: Double,
-    val minuteOffset: Int, // فرق الدقائق عن توقيت القاهرة
+    val minuteOffset: Int,
     val isAuto: Boolean = false
+)
+
+data class NextPrayerLiveInfo(
+    val prayerName: String,
+    val timeFormatted: String,
+    val remainingSeconds: Long
 )
 
 class QiblaAndPrayerRepository {
@@ -51,7 +67,7 @@ class QiblaAndPrayerRepository {
     )
 
     fun getGovernorate(name: String): GovernorateLocation {
-        return EGYPT_GOVERNORATES.firstOrNull { it.name == name } ?: EGYPT_GOVERNORATES[0]
+        return EGYPT_GOVERNORATES.firstOrNull { it.name == name } ?: EGYPT_GOVERNORATES[1]
     }
 
     /**
@@ -76,31 +92,115 @@ class QiblaAndPrayerRepository {
     }
 
     /**
-     * حساب مواقيت الصلاة لليوم حسب المحافظة المختارة
+     * حساب مواقيت الصلاة الفلكية الدقيقة لليوم شاملاً الشروق
+     * طبقاً لمعايير الهيئة المصرية العامة للمساحة (Egyptian General Authority of Survey)
      */
     fun getPrayerTimesForToday(govName: String = "القاهرة", iqamaDelay: Int = 15): Flow<List<PrayerTimeItem>> = flow {
         val gov = getGovernorate(govName)
-        val offset = gov.minuteOffset
+        val coordinates = Coordinates(gov.lat, gov.lng)
+        val now = Date()
+        val dateComponents = DateComponents.from(now)
+        val params = CalculationMethod.EGYPTIAN.parameters.apply {
+            madhab = Madhab.SHAFI
+        }
+        val pt = PrayerTimes(coordinates, dateComponents, params)
 
-        // Base times for Cairo
-        fun formatWithOffset(baseHour: Int, baseMin: Int, isPm: Boolean = false): String {
-            var totalMinutes = baseHour * 60 + baseMin + offset
-            if (totalMinutes < 0) totalMinutes += 24 * 60
-            val h = (totalMinutes / 60) % 24
-            val m = totalMinutes % 60
-            val displayHour = if (h == 0) 12 else if (h > 12) h - 12 else h
-            val suffix = if (isPm || h >= 12) "م" else "ص"
-            return String.format("%02d:%02d %s", displayHour, m, suffix)
+        val timeFormatter = SimpleDateFormat("hh:mm", Locale.getDefault())
+        fun formatWithSuffix(date: Date?): String {
+            if (date == null) return "--:--"
+            val cal = Calendar.getInstance().apply { time = date }
+            val hour24 = cal.get(Calendar.HOUR_OF_DAY)
+            val suffix = if (hour24 >= 12) "م" else "ص"
+            return "${timeFormatter.format(date)} $suffix"
         }
 
+        val nextP = pt.nextPrayer()
+
         val prayers = listOf(
-            PrayerTimeItem("الفجر", formatWithOffset(4, 58, false), iqamaDelayMinutes = 20),
-            PrayerTimeItem("الشروق", formatWithOffset(6, 27, false), iqamaDelayMinutes = 0),
-            PrayerTimeItem("الظهر", formatWithOffset(11, 46, false), iqamaDelayMinutes = iqamaDelay),
-            PrayerTimeItem("العصر", formatWithOffset(14, 44, true), isNext = true, iqamaDelayMinutes = iqamaDelay),
-            PrayerTimeItem("المغرب", formatWithOffset(17, 4, true), iqamaDelayMinutes = 10),
-            PrayerTimeItem("العشاء", formatWithOffset(18, 24, true), iqamaDelayMinutes = iqamaDelay)
+            PrayerTimeItem("الفجر", formatWithSuffix(pt.fajr), isNext = nextP == Prayer.FAJR, iqamaDelayMinutes = 20),
+            PrayerTimeItem("الشروق", formatWithSuffix(pt.sunrise), isNext = nextP == Prayer.SUNRISE, iqamaDelayMinutes = 0),
+            PrayerTimeItem("الظهر", formatWithSuffix(pt.dhuhr), isNext = nextP == Prayer.DHUHR, iqamaDelayMinutes = iqamaDelay),
+            PrayerTimeItem("العصر", formatWithSuffix(pt.asr), isNext = nextP == Prayer.ASR, iqamaDelayMinutes = iqamaDelay),
+            PrayerTimeItem("المغرب", formatWithSuffix(pt.maghrib), isNext = nextP == Prayer.MAGHRIB, iqamaDelayMinutes = 10),
+            PrayerTimeItem("العشاء", formatWithSuffix(pt.isha), isNext = nextP == Prayer.ISHA, iqamaDelayMinutes = iqamaDelay)
         )
         emit(prayers)
     }.flowOn(Dispatchers.IO)
+
+    /**
+     * حساب وتحديد الصلاة القادمة الحقيقية لحظياً والوقت المتبقي لها بالثواني
+     */
+    fun getNextPrayerLiveInfo(govName: String = "القاهرة"): NextPrayerLiveInfo {
+        val gov = getGovernorate(govName)
+        val coordinates = Coordinates(gov.lat, gov.lng)
+        val now = Date()
+        val dateComponents = DateComponents.from(now)
+        val params = CalculationMethod.EGYPTIAN.parameters.apply {
+            madhab = Madhab.SHAFI
+        }
+        val pt = PrayerTimes(coordinates, dateComponents, params)
+
+        val nextP = pt.nextPrayer()
+        var targetDate: Date? = null
+        var prayerTitle = "صلاة الفجر"
+
+        when (nextP) {
+            Prayer.FAJR -> {
+                targetDate = pt.fajr
+                prayerTitle = "صلاة الفجر"
+            }
+            Prayer.SUNRISE -> {
+                targetDate = pt.sunrise
+                prayerTitle = "شروق الشمس"
+            }
+            Prayer.DHUHR -> {
+                targetDate = pt.dhuhr
+                prayerTitle = "صلاة الظهر"
+            }
+            Prayer.ASR -> {
+                targetDate = pt.asr
+                prayerTitle = "صلاة العصر"
+            }
+            Prayer.MAGHRIB -> {
+                targetDate = pt.maghrib
+                prayerTitle = "صلاة المغرب"
+            }
+            Prayer.ISHA -> {
+                targetDate = pt.isha
+                prayerTitle = "صلاة العشاء"
+            }
+            else -> {
+                // After Isha: Calculate tomorrow's Fajr
+                val cal = Calendar.getInstance().apply {
+                    time = now
+                    add(Calendar.DAY_OF_YEAR, 1)
+                }
+                val tomorrowPt = PrayerTimes(coordinates, DateComponents.from(cal.time), params)
+                targetDate = tomorrowPt.fajr
+                prayerTitle = "صلاة الفجر"
+            }
+        }
+
+        val remainingSecs = if (targetDate != null) {
+            ((targetDate.time - now.time) / 1000).coerceAtLeast(0)
+        } else 0L
+
+        val timeFormatter = SimpleDateFormat("hh:mm", Locale.getDefault())
+        val suffix = if (targetDate != null) {
+            val c = Calendar.getInstance().apply { time = targetDate }
+            if (c.get(Calendar.HOUR_OF_DAY) >= 12) "م" else "ص"
+        } else ""
+
+        val formattedTime = if (targetDate != null) "${timeFormatter.format(targetDate)} $suffix" else "--:--"
+
+        return NextPrayerLiveInfo(
+            prayerName = prayerTitle,
+            timeFormatted = formattedTime,
+            remainingSeconds = remainingSecs
+        )
+    }
+
+    companion object {
+        val instance = QiblaAndPrayerRepository()
+    }
 }

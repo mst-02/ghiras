@@ -23,11 +23,17 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
+import androidx.compose.material.icons.filled.Healing
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.filled.Spa
+import androidx.compose.material.icons.filled.VolunteerActivism
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -187,13 +193,27 @@ val ComprehensiveDuasList = listOf(
     )
 )
 
+data class DuaCategoryItem(
+    val title: String,
+    val subtitle: String,
+    val icon: androidx.compose.ui.graphics.vector.ImageVector
+)
+
+val MainDuaCategories = listOf(
+    DuaCategoryItem("أدعية للمتوفين", "صدقة جارية ودعاء بالرحمة والمغفرة وتخصيص الاسم", Icons.Default.Favorite),
+    DuaCategoryItem("أدعية للوالدين", "بر الوالدين والدعاء لهما بالرحمة والمغفرة والعافية", Icons.Default.VolunteerActivism),
+    DuaCategoryItem("الرزق وتفريج الهم", "تفريج الكروب وسعة الرزق وقضاء الديون والبركة", Icons.Default.Spa),
+    DuaCategoryItem("الشفاء والعافية", "الرقية الشرعية وطلب الشفاء من كل داء وسقم", Icons.Default.Healing),
+    DuaCategoryItem("جوامع الدعاء", "جوامع الدعاء النبوي لخيري الدنيا والآخرة", Icons.Default.AutoAwesome),
+    DuaCategoryItem("أدعيتي الخاصة", "أدعيتك المكتوبة والمحفوظة للتضرع بها", Icons.Default.Bookmark)
+)
+
 @Composable
 fun DuasScreen(
     onBack: () -> Unit = {}
 ) {
     val context = LocalContext.current
-    val categories = listOf("أدعية للمتوفين", "الرزق وتفريج الهم", "الشفاء والعافية", "جوامع الدعاء", "أدعيتي الخاصة")
-    var selectedCategory by remember { mutableStateOf("أدعية للمتوفين") }
+    var activeCategory by remember { mutableStateOf<String?>(null) }
     var deceasedName by remember { mutableStateOf("") }
     val customDuasList = remember { mutableStateListOf<DuaItem>() }
     val favoriteDuaIds = remember { mutableStateListOf<Int>() }
@@ -202,11 +222,11 @@ fun DuasScreen(
     var newDuaTitle by remember { mutableStateOf("") }
     var newDuaText by remember { mutableStateOf("") }
 
-    val filteredDuas = remember(selectedCategory, customDuasList.toList()) {
-        if (selectedCategory == "أدعيتي الخاصة") {
-            customDuasList.toList()
-        } else {
-            ComprehensiveDuasList.filter { it.category == selectedCategory }
+    val filteredDuas = remember(activeCategory, customDuasList.toList()) {
+        when (activeCategory) {
+            null -> emptyList()
+            "أدعيتي الخاصة" -> customDuasList.toList()
+            else -> ComprehensiveDuasList.filter { it.category == activeCategory }
         }
     }
 
@@ -217,150 +237,245 @@ fun DuasScreen(
         contentPadding = PaddingValues(16.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
-        // Category Pills
-        item(key = "categories") {
-            LazyRow(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                items(categories) { cat ->
-                    val isSelected = cat == selectedCategory
-                    Surface(
-                        shape = RoundedCornerShape(12.dp),
-                        color = if (isSelected) titleColor() else MaterialTheme.colorScheme.surface,
-                        border = androidx.compose.foundation.BorderStroke(
-                            1.dp,
-                            if (isSelected) titleColor() else MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)
-                        ),
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(12.dp))
-                            .clickable { selectedCategory = cat }
-                    ) {
-                        Text(
-                            text = cat,
-                            color = if (isSelected) Color.White else MaterialTheme.colorScheme.onSurface,
-                            fontSize = 12.sp,
-                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-                            modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp)
-                        )
-                    }
-                }
-            }
-        }
-
-        // Add custom dua button when in custom category
-        if (selectedCategory == "أدعيتي الخاصة") {
-            item(key = "add_custom_dua_btn") {
-                Button(
-                    onClick = { showAddCustomDuaDialog = true },
-                    colors = ButtonDefaults.buttonColors(containerColor = EmeraldDeep),
-                    shape = RoundedCornerShape(12.dp),
-                    modifier = Modifier.fillMaxWidth()
+        // 1. Root Screen: Show Categories as interactive Cards/Buttons
+        if (activeCategory == null) {
+            item(key = "duas_section_title") {
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(bottom = 2.dp),
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Icon(Icons.Default.Add, contentDescription = null, tint = Color.White)
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Text("إضافة دعاء خاص بك", color = Color.White, fontWeight = FontWeight.Bold)
+                    Box(
+                        modifier = Modifier
+                            .size(4.dp, 16.dp)
+                            .background(GoldChampagne, RoundedCornerShape(2.dp))
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = "أبواب الأدعية النبوية والمأثورة",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = titleColor()
+                    )
                 }
             }
-        }
 
-        // Name Personalization Card (Active when in deceased category)
-        if (selectedCategory == "أدعية للمتوفين") {
-            item(key = "name_input") {
+            items(MainDuaCategories, key = { it.title }) { cat ->
+                val count = if (cat.title == "أدعيتي الخاصة") customDuasList.size else ComprehensiveDuasList.count { it.category == cat.title }
                 Card(
+                    onClick = { activeCategory = cat.title },
                     shape = RoundedCornerShape(18.dp),
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                     elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-                    border = androidx.compose.foundation.BorderStroke(1.dp, GoldChampagne.copy(alpha = 0.4f)),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.15f)),
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Column(modifier = Modifier.padding(16.dp)) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Surface(
-                                shape = CircleShape,
-                                color = GoldChampagne.copy(alpha = 0.2f),
-                                modifier = Modifier.size(36.dp)
-                            ) {
-                                Box(contentAlignment = Alignment.Center) {
-                                    Icon(
-                                        imageVector = Icons.Default.Person,
-                                        contentDescription = null,
-                                        tint = GoldDark,
-                                        modifier = Modifier.size(20.dp)
-                                    )
-                                }
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Surface(
+                            shape = CircleShape,
+                            color = GoldChampagne.copy(alpha = 0.15f),
+                            modifier = Modifier.size(46.dp)
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Icon(
+                                    imageVector = cat.icon,
+                                    contentDescription = null,
+                                    tint = GoldBright,
+                                    modifier = Modifier.size(24.dp)
+                                )
                             }
-                            Spacer(modifier = Modifier.width(10.dp))
+                        }
+
+                        Spacer(modifier = Modifier.width(14.dp))
+
+                        Column(modifier = Modifier.weight(1f)) {
                             Text(
-                                text = "تخصيص الدعاء باسم فقيدك الغالي",
+                                text = cat.title,
                                 style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.Bold,
                                 color = titleColor()
                             )
+                            Spacer(modifier = Modifier.height(2.dp))
+                            Text(
+                                text = cat.subtitle,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.65f)
+                            )
                         }
 
-                        Spacer(modifier = Modifier.height(10.dp))
-
-                        OutlinedTextField(
-                            value = deceasedName,
-                            onValueChange = { deceasedName = it },
-                            placeholder = { Text("مثال: أبي الحبيب، أمي الغالية، أو الاسم...") },
-                            modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(12.dp),
-                            singleLine = true,
-                            colors = OutlinedTextFieldDefaults.colors(
-                                focusedBorderColor = titleColor(),
-                                unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.4f)
-                            )
-                        )
-
-                        if (deceasedName.isNotBlank()) {
-                            Spacer(modifier = Modifier.height(8.dp))
+                        Surface(
+                            shape = RoundedCornerShape(6.dp),
+                            color = EmeraldLight
+                        ) {
                             Text(
-                                text = "سيتم إدراج «$deceasedName» تلقائياً في نصوص الأدعية بالأسفل بإذن الله.",
-                                fontSize = 12.sp,
-                                color = titleColor(),
-                                fontWeight = FontWeight.Medium
+                                text = "$count دعاء",
+                                color = EmeraldDeep,
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Bold,
+                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
                             )
+                        }
+
+                        Spacer(modifier = Modifier.width(6.dp))
+
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                            contentDescription = null,
+                            tint = GoldChampagne
+                        )
+                    }
+                }
+            }
+        } else {
+            // 2. Inside Category View: Back Header
+            item(key = "back_category_header") {
+                Surface(
+                    shape = RoundedCornerShape(12.dp),
+                    color = MaterialTheme.colorScheme.surface,
+                    border = androidx.compose.foundation.BorderStroke(1.dp, GoldChampagne.copy(alpha = 0.4f)),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { activeCategory = null }
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "رجوع",
+                            tint = GoldChampagne,
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = "الرجوع إلى أبواب الأدعية • $activeCategory",
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.Bold,
+                            color = titleColor()
+                        )
+                    }
+                }
+            }
+
+            // Add custom dua button when in custom category
+            if (activeCategory == "أدعيتي الخاصة") {
+                item(key = "add_custom_dua_btn") {
+                    Button(
+                        onClick = { showAddCustomDuaDialog = true },
+                        colors = ButtonDefaults.buttonColors(containerColor = EmeraldDeep),
+                        shape = RoundedCornerShape(12.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Icon(Icons.Default.Add, contentDescription = null, tint = Color.White)
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text("إضافة دعاء خاص بك", color = Color.White, fontWeight = FontWeight.Bold)
+                    }
+                }
+            }
+
+            // Name Personalization Card (Active when in deceased category)
+            if (activeCategory == "أدعية للمتوفين") {
+                item(key = "name_input") {
+                    Card(
+                        shape = RoundedCornerShape(18.dp),
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, GoldChampagne.copy(alpha = 0.4f)),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Column(modifier = Modifier.padding(16.dp)) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Surface(
+                                    shape = CircleShape,
+                                    color = GoldChampagne.copy(alpha = 0.2f),
+                                    modifier = Modifier.size(36.dp)
+                                ) {
+                                    Box(contentAlignment = Alignment.Center) {
+                                        Icon(
+                                            imageVector = Icons.Default.Person,
+                                            contentDescription = null,
+                                            tint = GoldDark,
+                                            modifier = Modifier.size(20.dp)
+                                        )
+                                    }
+                                }
+                                Spacer(modifier = Modifier.width(10.dp))
+                                Text(
+                                    text = "تخصيص الدعاء باسم فقيدك الغالي",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    color = titleColor()
+                                )
+                            }
+
+                            Spacer(modifier = Modifier.height(10.dp))
+
+                            OutlinedTextField(
+                                value = deceasedName,
+                                onValueChange = { deceasedName = it },
+                                placeholder = { Text("مثال: أبي الحبيب، أمي الغالية، أو الاسم...") },
+                                modifier = Modifier.fillMaxWidth(),
+                                shape = RoundedCornerShape(12.dp),
+                                singleLine = true,
+                                colors = OutlinedTextFieldDefaults.colors(
+                                    focusedBorderColor = titleColor(),
+                                    unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.4f)
+                                )
+                            )
+
+                            if (deceasedName.isNotBlank()) {
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Text(
+                                    text = "سيتم إدراج «$deceasedName» تلقائياً في نصوص الأدعية بالأسفل بإذن الله.",
+                                    fontSize = 12.sp,
+                                    color = titleColor(),
+                                    fontWeight = FontWeight.Medium
+                                )
+                            }
                         }
                     }
                 }
             }
-        }
 
-        // Duas List
-        if (filteredDuas.isEmpty() && selectedCategory == "أدعيتي الخاصة") {
-            item(key = "empty_custom") {
-                Text(
-                    text = "لم تقم بإضافة أدعية خاصة بعد. اضغط على الزر بالأعلى لإضافة دعائك.",
-                    textAlign = TextAlign.Center,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = 24.dp)
-                )
-            }
-        } else {
-            items(filteredDuas, key = { it.id }) { dua ->
-                val isFav = favoriteDuaIds.contains(dua.id)
-                DuaDisplayCard(
-                    dua = dua,
-                    deceasedName = deceasedName,
-                    isFavorite = isFav,
-                    onToggleFavorite = {
-                        if (isFav) favoriteDuaIds.remove(dua.id)
-                        else favoriteDuaIds.add(dua.id)
-                    },
-                    onShare = { textToShare ->
-                        val sendIntent = Intent().apply {
-                            action = Intent.ACTION_SEND
-                            putExtra(Intent.EXTRA_TEXT, "${dua.title}\n\n$textToShare\n\nتطبيق غِراس - غرسٌ طيب وأجرٌ دائم")
-                            type = "text/plain"
+            // Duas List
+            if (filteredDuas.isEmpty() && activeCategory == "أدعيتي الخاصة") {
+                item(key = "empty_custom") {
+                    Text(
+                        text = "لم تقم بإضافة أدعية خاصة بعد. اضغط على الزر بالأعلى لإضافة دعائك.",
+                        textAlign = TextAlign.Center,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 24.dp)
+                    )
+                }
+            } else {
+                items(filteredDuas, key = { it.id }) { dua ->
+                    val isFav = favoriteDuaIds.contains(dua.id)
+                    DuaDisplayCard(
+                        dua = dua,
+                        deceasedName = deceasedName,
+                        isFavorite = isFav,
+                        onToggleFavorite = {
+                            if (isFav) favoriteDuaIds.remove(dua.id)
+                            else favoriteDuaIds.add(dua.id)
+                        },
+                        onShare = { textToShare ->
+                            val sendIntent = Intent().apply {
+                                action = Intent.ACTION_SEND
+                                putExtra(Intent.EXTRA_TEXT, "${dua.title}\n\n$textToShare\n\nتطبيق غِراس - غرسٌ طيب وأجرٌ دائم")
+                                type = "text/plain"
+                            }
+                            context.startActivity(Intent.createChooser(sendIntent, "مشاركة الدعاء المبارك"))
                         }
-                        context.startActivity(Intent.createChooser(sendIntent, "مشاركة الدعاء المبارك"))
-                    }
-                )
+                    )
+                }
             }
         }
     }

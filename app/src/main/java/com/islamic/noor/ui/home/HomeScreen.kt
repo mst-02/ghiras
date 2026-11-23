@@ -65,6 +65,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.islamic.noor.data.repository.GhirasRepository
+import com.islamic.noor.data.repository.QiblaAndPrayerRepository
+import com.islamic.noor.data.repository.UserRepository
 import com.islamic.noor.ui.navigation.Screen
 import com.islamic.noor.ui.theme.EmeraldDeep
 import com.islamic.noor.ui.theme.EmeraldLight
@@ -534,23 +536,21 @@ private fun LuxuryFeatureCard(
 
 @Composable
 private fun PrayerTimelineCard(onQiblaClick: () -> Unit) {
-    // Real-time live countdown timer (ticking every second)
-    var remainingSeconds by remember { mutableLongStateOf(5075L) } // ~ 01:24:35
+    val userProfile by UserRepository.instance.userProfile.collectAsState()
+    var livePrayerInfo by remember {
+        mutableStateOf(QiblaAndPrayerRepository.instance.getNextPrayerLiveInfo(userProfile.selectedGovernorate))
+    }
 
-    LaunchedEffect(Unit) {
+    LaunchedEffect(userProfile.selectedGovernorate) {
         while (true) {
+            livePrayerInfo = QiblaAndPrayerRepository.instance.getNextPrayerLiveInfo(userProfile.selectedGovernorate)
             delay(1000)
-            if (remainingSeconds > 0) {
-                remainingSeconds--
-            } else {
-                remainingSeconds = 3600 * 3
-            }
         }
     }
 
-    val hours = remainingSeconds / 3600
-    val minutes = (remainingSeconds % 3600) / 60
-    val seconds = remainingSeconds % 60
+    val hours = livePrayerInfo.remainingSeconds / 3600
+    val minutes = (livePrayerInfo.remainingSeconds % 3600) / 60
+    val seconds = livePrayerInfo.remainingSeconds % 60
     val countdownFormatted = String.format("%02d:%02d:%02d", hours, minutes, seconds)
 
     Card(
@@ -585,7 +585,7 @@ private fun PrayerTimelineCard(onQiblaClick: () -> Unit) {
                             )
                             Spacer(modifier = Modifier.width(6.dp))
                             Text(
-                                text = "الصلاة القادمة: صلاة العصر",
+                                text = "الموعد القادم: ${livePrayerInfo.prayerName}",
                                 style = MaterialTheme.typography.titleMedium,
                                 color = GoldChampagne,
                                 fontWeight = FontWeight.Bold
@@ -594,7 +594,7 @@ private fun PrayerTimelineCard(onQiblaClick: () -> Unit) {
                         Spacer(modifier = Modifier.height(3.dp))
                         // Real-time ticking countdown
                         Text(
-                            text = "متبقي $countdownFormatted على الأذان",
+                            text = "متبقي $countdownFormatted (${livePrayerInfo.timeFormatted})",
                             style = MaterialTheme.typography.bodySmall,
                             color = Color.White.copy(alpha = 0.95f),
                             fontWeight = FontWeight.Medium

@@ -22,6 +22,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import com.islamic.noor.data.repository.QuranRepository
 import com.islamic.noor.data.repository.UserRepository
 import com.islamic.noor.domain.model.AppThemeMode
 import com.islamic.noor.ui.azkar.AzkarScreen
@@ -48,6 +49,7 @@ import com.islamic.noor.util.GhirasUpdateDialog
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        QuranRepository.initialize(this)
         setContent {
             val userProfile by UserRepository.instance.userProfile.collectAsState()
             val isDark = when (userProfile.appTheme) {

@@ -1,11 +1,15 @@
 package com.islamic.noor.data.repository
 
+import android.content.Context
 import com.islamic.noor.domain.model.Surah
 import com.islamic.noor.domain.model.Verse
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.withContext
+import org.json.JSONObject
+import java.io.InputStream
 
 data class VerseSearchResult(
     val surahId: Int,
@@ -15,18 +19,23 @@ data class VerseSearchResult(
     val tafseerShort: String
 )
 
-class QuranRepository {
+class QuranRepository(private val context: Context? = null) {
 
     fun getAllSurahs(): Flow<List<Surah>> = flow {
         emit(SURAH_LIST)
     }.flowOn(Dispatchers.IO)
 
     fun getVersesForSurah(surahId: Int): Flow<List<Verse>> = flow {
-        val verses = getSampleVersesForSurah(surahId)
+        val targetContext = context ?: appContext
+        val verses = if (targetContext != null) {
+            loadVersesFromAssets(targetContext, surahId)
+        } else {
+            getSampleVersesForSurah(surahId)
+        }
         emit(verses)
     }.flowOn(Dispatchers.IO)
 
-    // بحث دقيق وشامل في نصوص الآيات
+    // بحث دقيق وشامل في نصوص كافة آيات القرآن الكريم
     fun searchVerses(query: String): Flow<List<VerseSearchResult>> = flow {
         if (query.isBlank()) {
             emit(emptyList())
@@ -34,30 +43,118 @@ class QuranRepository {
         }
         val cleanQuery = query.trim()
         val results = mutableListOf<VerseSearchResult>()
+        val targetContext = context ?: appContext
 
-        // Search in all sample verses
-        for (surah in SURAH_LIST.take(15)) {
-            val verses = getSampleVersesForSurah(surah.id)
-            for (verse in verses) {
-                if (verse.textUthmani.contains(cleanQuery, ignoreCase = true) ||
-                    verse.tafseerShort.contains(cleanQuery, ignoreCase = true)
-                ) {
-                    results.add(
-                        VerseSearchResult(
-                            surahId = surah.id,
-                            surahName = surah.nameArabic,
-                            verseNumber = verse.verseNumber,
-                            textUthmani = verse.textUthmani,
-                            tafseerShort = verse.tafseerShort
+        if (targetContext != null) {
+            val allSurahs = SURAH_LIST
+            for (surah in allSurahs) {
+                val verses = loadVersesFromAssets(targetContext, surah.id)
+                for (verse in verses) {
+                    if (verse.textUthmani.contains(cleanQuery, ignoreCase = true) ||
+                        cleanArabic(verse.textUthmani).contains(cleanArabic(cleanQuery))
+                    ) {
+                        results.add(
+                            VerseSearchResult(
+                                surahId = surah.id,
+                                surahName = surah.nameArabic,
+                                verseNumber = verse.verseNumber,
+                                textUthmani = verse.textUthmani,
+                                tafseerShort = verse.tafseerShort
+                            )
                         )
-                    )
+                        if (results.size >= 50) break
+                    }
                 }
+                if (results.size >= 50) break
             }
         }
         emit(results)
     }.flowOn(Dispatchers.IO)
 
     companion object {
+        private var appContext: Context? = null
+        private val surahCache = mutableMapOf<Int, List<Verse>>()
+        private var rawJsonString: String? = null
+
+        fun initialize(context: Context) {
+            appContext = context.applicationContext
+        }
+
+        private fun cleanArabic(text: String): String {
+            return text.replace(Regex("[\u064B-\u065F\u0670\u06D6-\u06ED]"), "")
+                .replace("أ", "ا")
+                .replace("إ", "ا")
+                .replace("آ", "ا")
+                .replace("ة", "ه")
+                .replace("ى", "ي")
+        }
+
+        private fun loadVersesFromAssets(ctx: Context, surahId: Int): List<Verse> {
+            synchronized(surahCache) {
+                surahCache[surahId]?.let { return it }
+            }
+
+            try {
+                if (rawJsonString == null) {
+                    val stream: InputStream = ctx.assets.open("quran_uthmani.json")
+                    rawJsonString = stream.bufferedReader().use { it.readText() }
+                }
+
+                val json = JSONObject(rawJsonString!!)
+                val dataObj = json.getJSONObject("data")
+                val surahsArray = dataObj.getJSONArray("surahs")
+
+                for (s in 0 until surahsArray.length()) {
+                    val surahObj = surahsArray.getJSONObject(s)
+                    val sNum = surahObj.getInt("number")
+                    if (sNum == surahId) {
+                        val ayahsArray = surahObj.getJSONArray("ayahs")
+                        val list = mutableListOf<Verse>()
+
+                        val basmalahPattern = "بِسْمِ ٱللَّهِ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ"
+
+                        for (a in 0 until ayahsArray.length()) {
+                            val ayahObj = ayahsArray.getJSONObject(a)
+                            val num = ayahObj.getInt("number")
+                            val numInSurah = ayahObj.getInt("numberInSurah")
+                            var text = ayahObj.getString("text")
+                                .replace("\uFEFF", "")
+                                .trim()
+                            val page = ayahObj.optInt("page", 1)
+
+                            // Strip redundant prefix Basmalah from Ayah 1 in all surahs except Al-Fatihah (1) and At-Tawbah (9)
+                            if (surahId != 1 && surahId != 9 && numInSurah == 1) {
+                                if (text.startsWith(basmalahPattern)) {
+                                    text = text.removePrefix(basmalahPattern).trim()
+                                }
+                            }
+
+                            val shortTafseer = "بيان لمعنى الآية الكريمة وتدبر مقاصدها في ضوء التفسير الميسر لكتاب الله."
+
+                            list.add(
+                                Verse(
+                                    id = num,
+                                    verseNumber = numInSurah,
+                                    textUthmani = text,
+                                    tafseerShort = shortTafseer,
+                                    page = page
+                                )
+                            )
+                        }
+
+                        synchronized(surahCache) {
+                            surahCache[surahId] = list
+                        }
+                        return list
+                    }
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+
+            return getSampleVersesForSurah(surahId)
+        }
+
         const val KHATM_AL_QURAN_DUA = """اللَّهُمَّ ارْحَمْنِي بِالقُرْآنِ وَاجْعَلْهُ لِي إِمَاماً وَنُوراً وَهُدًى وَرَحْمَةً.
 اللَّهُمَّ ذَكِّرْنِي مِنْهُ مَا نَسِيتُ وَعَلِّمْنِي مِنْهُ مَا جَهِلْتُ، وَارْزُقْنِي تِلاَوَتَهُ آنَاءَ اللَّيْلِ وَأَطْرَافَ النَّهَارِ، وَاجْعَلْهُ لِي حُجَّةً يَا رَبَّ العَالَمِينَ.
 اللَّهُمَّ أَصْلِحْ لِي دِينِي الَّذِي هُوَ عِصْمَةُ أَمْرِي، وَأَصْلِحْ لِي دُنْيَايَ الَّتِي فِيهَا مَعَاشِي، وَأَصْلِحْ لِي آخِرَتِي الَّتِي فِيهَا مَعَادِي، وَاجْعَلِ الحَيَاةَ زِيَادَةً لِي فِي كُلِّ خَيْرٍ، وَاجْعَلِ المَوْتَ رَاحَةً لِي مِنْ كُلِّ شَرٍّ.

@@ -19,5 +19,6 @@ data class Verse(
     val textUthmani: String,
     val tafseerShort: String = "",
     val surahId: Int = 1,
-    val translation: String = ""
+    val translation: String = "",
+    val page: Int = 1
 )

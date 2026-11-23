@@ -86,55 +86,219 @@ fun QuranScreen(
         }
     }
 
-    Column(
+    Box(
         modifier = modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
     ) {
-        // Search Box for Verses & Surahs
-        OutlinedTextField(
-            value = searchQuery,
-            onValueChange = { searchQuery = it },
-            placeholder = { Text("ابحث في الآيات أو اسم السورة...") },
-            leadingIcon = {
-                Icon(Icons.Default.Search, contentDescription = "بحث", tint = GoldChampagne)
-            },
-            trailingIcon = {
-                if (searchQuery.isNotBlank()) {
-                    IconButton(onClick = { searchQuery = "" }) {
-                        Icon(Icons.Default.Clear, contentDescription = "مسح")
+        Column(modifier = Modifier.fillMaxSize()) {
+            // Search Box for Verses & Surahs
+            OutlinedTextField(
+                value = searchQuery,
+                onValueChange = { searchQuery = it },
+                placeholder = { Text("ابحث في الآيات أو اسم السورة...") },
+                leadingIcon = {
+                    Icon(Icons.Default.Search, contentDescription = "بحث", tint = GoldChampagne)
+                },
+                trailingIcon = {
+                    if (searchQuery.isNotBlank()) {
+                        IconButton(onClick = { searchQuery = "" }) {
+                            Icon(Icons.Default.Clear, contentDescription = "مسح")
+                        }
+                    }
+                },
+                singleLine = true,
+                shape = RoundedCornerShape(16.dp),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = titleColor(),
+                    unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f),
+                    focusedContainerColor = MaterialTheme.colorScheme.surface,
+                    unfocusedContainerColor = MaterialTheme.colorScheme.surface
+                ),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 10.dp)
+            )
+
+            // Content Area: Search Results or Surah List
+            if (searchQuery.isNotBlank() && verseSearchResults.isNotEmpty()) {
+                // Verse Search Results View
+                LazyColumn(
+                    contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 90.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                    modifier = Modifier.fillMaxSize()
+                ) {
+                    item(key = "search_header") {
+                        Text(
+                            text = "نتائج البحث في الآيات الكريمة (${verseSearchResults.size} آية):",
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 13.sp,
+                            color = titleColor(),
+                            modifier = Modifier.padding(bottom = 4.dp)
+                        )
+                    }
+
+                    items(verseSearchResults, key = { "${it.surahId}_${it.verseNumber}" }) { result ->
+                        Card(
+                            shape = RoundedCornerShape(16.dp),
+                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                            elevation = CardDefaults.cardElevation(defaultElevation = 1.5.dp),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { onSurahClick(result.surahId) }
+                        ) {
+                            Column(modifier = Modifier.padding(14.dp)) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Surface(
+                                        shape = RoundedCornerShape(8.dp),
+                                        color = EmeraldLight
+                                    ) {
+                                        Text(
+                                            text = "سورة ${result.surahName} • آية ${result.verseNumber}",
+                                            color = EmeraldDeep,
+                                            fontSize = 11.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+                                        )
+                                    }
+
+                                    Text(
+                                        text = "فتح السورة ←",
+                                        fontSize = 11.sp,
+                                        color = GoldChampagne,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                }
+
+                                Spacer(modifier = Modifier.height(8.dp))
+
+                                Text(
+                                    text = "«${result.textUthmani}»",
+                                    fontSize = 16.sp,
+                                    lineHeight = 26.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+
+                                if (result.tafseerShort.isNotBlank()) {
+                                    Spacer(modifier = Modifier.height(6.dp))
+                                    Text(
+                                        text = "التفسير الميسر: ${result.tafseerShort}",
+                                        fontSize = 12.sp,
+                                        lineHeight = 18.sp,
+                                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                                    )
+                                }
+                            }
+                        }
                     }
                 }
-            },
-            singleLine = true,
-            shape = RoundedCornerShape(16.dp),
-            colors = OutlinedTextFieldDefaults.colors(
-                focusedBorderColor = titleColor(),
-                unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f),
-                focusedContainerColor = MaterialTheme.colorScheme.surface,
-                unfocusedContainerColor = MaterialTheme.colorScheme.surface
-            ),
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 10.dp)
-        )
+            } else {
+                // Surah List View
+                LazyColumn(
+                    contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 90.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                    modifier = Modifier.fillMaxSize()
+                ) {
+                    items(filteredSurahs, key = { it.id }) { surah ->
+                        SurahListItemCard(
+                            surah = surah,
+                            onClick = { onSurahClick(surah.id) }
+                        )
+                    }
 
-        // 1. بطاقة "استكمل القراءة" في أعلى الصفحة (التي تم استبدالها بدعاء الختم كما طلب المستخدم)
-        if (searchQuery.isBlank()) {
+                    // 2. بطاقة "دعاء ختم القرآن الكريم" في آخر القائمة تماماً بعد سورة الناس (114) كما طلب المستخدم!
+                    if (searchQuery.isBlank()) {
+                        item(key = "khatm_quran_dua_bottom") {
+                            Card(
+                                shape = RoundedCornerShape(18.dp),
+                                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+                                border = androidx.compose.foundation.BorderStroke(1.5.dp, GoldChampagne.copy(alpha = 0.8f)),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 12.dp)
+                                    .clickable { showKhatmDuaDialog = true }
+                            ) {
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(16.dp),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Surface(
+                                            shape = CircleShape,
+                                            color = GoldChampagne.copy(alpha = 0.2f),
+                                            modifier = Modifier.size(44.dp)
+                                        ) {
+                                            Box(contentAlignment = Alignment.Center) {
+                                                Icon(
+                                                    imageVector = Icons.Default.AutoAwesome,
+                                                    contentDescription = null,
+                                                    tint = GoldBright,
+                                                    modifier = Modifier.size(24.dp)
+                                                )
+                                            }
+                                        }
+                                        Spacer(modifier = Modifier.width(12.dp))
+                                        Column {
+                                            Text(
+                                                text = "دعاء ختم القرآن الكريم",
+                                                fontWeight = FontWeight.Bold,
+                                                fontSize = 15.sp,
+                                                color = titleColor()
+                                            )
+                                            Text(
+                                                text = "الدعاء المأثور والجامع لخيري الدنيا والآخرة",
+                                                fontSize = 11.sp,
+                                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.65f)
+                                            )
+                                        }
+                                    }
+
+                                    Surface(
+                                        shape = RoundedCornerShape(10.dp),
+                                        color = EmeraldLight
+                                    ) {
+                                        Text(
+                                            text = "قراءة الدعاء",
+                                            color = EmeraldDeep,
+                                            fontSize = 11.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // بطاقة استكمال القراءة الثابتة بالأسفل فوق شريط التنقل السفلي حسب طلب المستخدم بالضبط
+        if (searchQuery.isBlank() && userProfile.lastReadSurahName.isNotBlank()) {
             Card(
                 shape = RoundedCornerShape(18.dp),
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                elevation = CardDefaults.cardElevation(defaultElevation = 2.5.dp),
-                border = androidx.compose.foundation.BorderStroke(1.2.dp, GoldChampagne.copy(alpha = 0.7f)),
+                elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
+                border = androidx.compose.foundation.BorderStroke(1.2.dp, GoldChampagne.copy(alpha = 0.8f)),
                 modifier = Modifier
+                    .align(Alignment.BottomCenter)
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 4.dp)
+                    .padding(horizontal = 16.dp, vertical = 8.dp)
                     .clickable { onSurahClick(userProfile.lastReadSurahId) }
             ) {
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 14.dp),
+                        .padding(horizontal = 16.dp, vertical = 12.dp),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
@@ -142,14 +306,14 @@ fun QuranScreen(
                         Surface(
                             shape = CircleShape,
                             color = GoldChampagne.copy(alpha = 0.2f),
-                            modifier = Modifier.size(42.dp)
+                            modifier = Modifier.size(40.dp)
                         ) {
                             Box(contentAlignment = Alignment.Center) {
                                 Icon(
                                     imageVector = Icons.Default.Bookmark,
                                     contentDescription = null,
                                     tint = GoldBright,
-                                    modifier = Modifier.size(24.dp)
+                                    modifier = Modifier.size(22.dp)
                                 )
                             }
                         }
@@ -157,27 +321,12 @@ fun QuranScreen(
                         Spacer(modifier = Modifier.width(12.dp))
 
                         Column {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Text(
-                                    text = "استكمل القراءة",
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = 15.sp,
-                                    color = titleColor()
-                                )
-                                Spacer(modifier = Modifier.width(6.dp))
-                                Surface(
-                                    shape = RoundedCornerShape(6.dp),
-                                    color = EmeraldLight
-                                ) {
-                                    Text(
-                                        text = "آخر موضع محفوظ",
-                                        color = EmeraldDeep,
-                                        fontSize = 10.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-                                    )
-                                }
-                            }
+                            Text(
+                                text = "استكمال القراءة",
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 14.sp,
+                                color = titleColor()
+                            )
                             Spacer(modifier = Modifier.height(2.dp))
                             Text(
                                 text = "سورة ${userProfile.lastReadSurahName} • الآية ${userProfile.lastReadVerseNumber}",
@@ -189,178 +338,15 @@ fun QuranScreen(
 
                     Surface(
                         shape = RoundedCornerShape(10.dp),
-                        color = GoldChampagne.copy(alpha = 0.2f)
+                        color = EmeraldDeep
                     ) {
                         Text(
                             text = "متابعة ←",
-                            color = GoldDark,
+                            color = Color.White,
                             fontSize = 12.sp,
                             fontWeight = FontWeight.Bold,
                             modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
                         )
-                    }
-                }
-            }
-
-            Spacer(modifier = Modifier.height(6.dp))
-        }
-
-        // Content Area: Search Results or Surah List
-        if (searchQuery.isNotBlank() && verseSearchResults.isNotEmpty()) {
-            // Verse Search Results View
-            LazyColumn(
-                contentPadding = PaddingValues(16.dp),
-                verticalArrangement = Arrangement.spacedBy(10.dp),
-                modifier = Modifier.fillMaxSize()
-            ) {
-                item(key = "search_header") {
-                    Text(
-                        text = "نتائج البحث في الآيات الكريمة (${verseSearchResults.size} آية):",
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 13.sp,
-                        color = titleColor(),
-                        modifier = Modifier.padding(bottom = 4.dp)
-                    )
-                }
-
-                items(verseSearchResults, key = { "${it.surahId}_${it.verseNumber}" }) { result ->
-                    Card(
-                        shape = RoundedCornerShape(16.dp),
-                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                        elevation = CardDefaults.cardElevation(defaultElevation = 1.5.dp),
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable { onSurahClick(result.surahId) }
-                    ) {
-                        Column(modifier = Modifier.padding(14.dp)) {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Surface(
-                                    shape = RoundedCornerShape(8.dp),
-                                    color = EmeraldLight
-                                ) {
-                                    Text(
-                                        text = "سورة ${result.surahName} • آية ${result.verseNumber}",
-                                        color = EmeraldDeep,
-                                        fontSize = 11.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
-                                    )
-                                }
-
-                                Text(
-                                    text = "فتح السورة ←",
-                                    fontSize = 11.sp,
-                                    color = GoldChampagne,
-                                    fontWeight = FontWeight.Bold
-                                )
-                            }
-
-                            Spacer(modifier = Modifier.height(8.dp))
-
-                            Text(
-                                text = "«${result.textUthmani}»",
-                                fontSize = 16.sp,
-                                lineHeight = 26.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.onSurface
-                            )
-
-                            if (result.tafseerShort.isNotBlank()) {
-                                Spacer(modifier = Modifier.height(6.dp))
-                                Text(
-                                    text = "التفسير الميسر: ${result.tafseerShort}",
-                                    fontSize = 12.sp,
-                                    lineHeight = 18.sp,
-                                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
-                                )
-                            }
-                        }
-                    }
-                }
-            }
-        } else {
-            // Surah List View
-            LazyColumn(
-                contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 24.dp),
-                verticalArrangement = Arrangement.spacedBy(10.dp),
-                modifier = Modifier.fillMaxSize()
-            ) {
-                items(filteredSurahs, key = { it.id }) { surah ->
-                    SurahListItemCard(
-                        surah = surah,
-                        onClick = { onSurahClick(surah.id) }
-                    )
-                }
-
-                // 2. بطاقة "دعاء ختم القرآن الكريم" في آخر القائمة تماماً بعد سورة الناس (114) كما طلب المستخدم!
-                if (searchQuery.isBlank()) {
-                    item(key = "khatm_quran_dua_bottom") {
-                        Card(
-                            shape = RoundedCornerShape(18.dp),
-                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-                            border = androidx.compose.foundation.BorderStroke(1.5.dp, GoldChampagne.copy(alpha = 0.8f)),
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(vertical = 12.dp)
-                                .clickable { showKhatmDuaDialog = true }
-                        ) {
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(16.dp),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Surface(
-                                        shape = CircleShape,
-                                        color = GoldChampagne.copy(alpha = 0.2f),
-                                        modifier = Modifier.size(44.dp)
-                                    ) {
-                                        Box(contentAlignment = Alignment.Center) {
-                                            Icon(
-                                                imageVector = Icons.Default.AutoAwesome,
-                                                contentDescription = null,
-                                                tint = GoldBright,
-                                                modifier = Modifier.size(24.dp)
-                                            )
-                                        }
-                                    }
-                                    Spacer(modifier = Modifier.width(12.dp))
-                                    Column {
-                                        Text(
-                                            text = "دعاء ختم القرآن الكريم",
-                                            fontWeight = FontWeight.Bold,
-                                            fontSize = 15.sp,
-                                            color = titleColor()
-                                        )
-                                        Text(
-                                            text = "الدعاء المأثور والجامع لخيري الدنيا والآخرة",
-                                            fontSize = 11.sp,
-                                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.65f)
-                                        )
-                                    }
-                                }
-
-                                Surface(
-                                    shape = RoundedCornerShape(10.dp),
-                                    color = EmeraldLight
-                                ) {
-                                    Text(
-                                        text = "قراءة الدعاء",
-                                        color = EmeraldDeep,
-                                        fontSize = 11.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
-                                    )
-                                }
-                            }
-                        }
                     }
                 }
             }

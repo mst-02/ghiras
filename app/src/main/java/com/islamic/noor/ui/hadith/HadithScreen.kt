@@ -24,13 +24,17 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
+import androidx.compose.material.icons.automirrored.filled.MenuBook
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.Mosque
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.filled.Spa
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.HorizontalDivider
@@ -211,19 +215,51 @@ val SampleHadiths = listOf(
     )
 )
 
+data class HadithCategoryInfo(
+    val title: String,
+    val subtitle: String,
+    val icon: androidx.compose.ui.graphics.vector.ImageVector
+)
+
+val HadithCategories = listOf(
+    HadithCategoryInfo(
+        title = "صحيح البخاري",
+        subtitle = "أصح كتب الحديث النبوي الشريف وأعلاها منزلة",
+        icon = Icons.AutoMirrored.Filled.MenuBook
+    ),
+    HadithCategoryInfo(
+        title = "صحيح مسلم",
+        subtitle = "الأحاديث المسندة الصحيحة المتصلة عن رسول الله ﷺ",
+        icon = Icons.Default.AutoAwesome
+    ),
+    HadithCategoryInfo(
+        title = "الأربعون النووية",
+        subtitle = "جوامع الكلم وقواعد الدين العظيمة للإمام النووي",
+        icon = Icons.Default.Mosque
+    ),
+    HadithCategoryInfo(
+        title = "رياض الصالحين",
+        subtitle = "زاد المسلم اليومي في الأخلاق والآداب والفضائل والتربية",
+        icon = Icons.Default.Spa
+    )
+)
+
 @Composable
 fun HadithScreen(
     onBack: () -> Unit = {}
 ) {
     val context = LocalContext.current
     var searchQuery by remember { mutableStateOf("") }
-    val categories = listOf("الكل", "صحيح البخاري", "صحيح مسلم", "الأربعون النووية", "رياض الصالحين")
-    var selectedCategory by remember { mutableStateOf("الكل") }
+    var activeCategory by remember { mutableStateOf<String?>(null) }
     val favoriteHadithIds = remember { mutableStateListOf<Int>() }
 
-    val filteredHadiths = remember(searchQuery, selectedCategory) {
+    val displayedHadiths = remember(searchQuery, activeCategory) {
         SampleHadiths.filter { hadith ->
-            val matchesCategory = selectedCategory == "الكل" || hadith.category == selectedCategory
+            val matchesCategory = when (activeCategory) {
+                null -> true
+                "الأحاديث المفضلة" -> favoriteHadithIds.contains(hadith.id)
+                else -> hadith.category == activeCategory
+            }
             val matchesSearch = searchQuery.isBlank() ||
                 hadith.title.contains(searchQuery.trim()) ||
                 hadith.matn.contains(searchQuery.trim()) ||
@@ -239,12 +275,47 @@ fun HadithScreen(
         contentPadding = PaddingValues(16.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
+        // Back header if inside a category
+        if (activeCategory != null) {
+            item(key = "back_category_header") {
+                Surface(
+                    shape = RoundedCornerShape(12.dp),
+                    color = MaterialTheme.colorScheme.surface,
+                    border = androidx.compose.foundation.BorderStroke(1.dp, GoldChampagne.copy(alpha = 0.4f)),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { activeCategory = null }
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "رجوع",
+                            tint = GoldChampagne,
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = "الرجوع إلى تصنيفات الأحاديث • $activeCategory",
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.Bold,
+                            color = titleColor()
+                        )
+                    }
+                }
+            }
+        }
+
         // Search Box
         item(key = "search_box") {
             OutlinedTextField(
                 value = searchQuery,
                 onValueChange = { searchQuery = it },
-                placeholder = { Text("ابحث في متون الأحاديث أو الرواة...") },
+                placeholder = {
+                    Text(if (activeCategory == null) "ابحث في جميع الأحاديث أو الرواة..." else "ابحث في أحاديث $activeCategory...")
+                },
                 leadingIcon = {
                     Icon(Icons.Default.Search, contentDescription = "بحث", tint = GoldChampagne)
                 },
@@ -267,57 +338,189 @@ fun HadithScreen(
             )
         }
 
-        // Category Filter Pills
-        item(key = "category_chips") {
-            LazyRow(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                items(categories) { cat ->
-                    val isSelected = cat == selectedCategory
-                    Surface(
-                        shape = RoundedCornerShape(12.dp),
-                        color = if (isSelected) titleColor() else MaterialTheme.colorScheme.surface,
-                        border = androidx.compose.foundation.BorderStroke(
-                            1.dp,
-                            if (isSelected) titleColor() else MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)
-                        ),
+        // 1. If at root and not searching: Show Categories as interactive Cards/Buttons
+        if (activeCategory == null && searchQuery.isBlank()) {
+            // Favorite Hadiths Card
+            item(key = "fav_hadiths_card") {
+                Card(
+                    onClick = { activeCategory = "الأحاديث المفضلة" },
+                    shape = RoundedCornerShape(18.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+                    border = androidx.compose.foundation.BorderStroke(1.2.dp, Color(0xFFE53935).copy(alpha = 0.3f)),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Row(
                         modifier = Modifier
-                            .clip(RoundedCornerShape(12.dp))
-                            .clickable { selectedCategory = cat }
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text(
-                            text = cat,
-                            color = if (isSelected) Color.White else MaterialTheme.colorScheme.onSurface,
-                            fontSize = 12.sp,
-                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-                            modifier = Modifier.padding(horizontal = 14.dp, vertical = 7.dp)
+                        Surface(
+                            shape = CircleShape,
+                            color = Color(0xFFE53935).copy(alpha = 0.15f),
+                            modifier = Modifier.size(46.dp)
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Icon(
+                                    imageVector = Icons.Default.Favorite,
+                                    contentDescription = null,
+                                    tint = Color(0xFFE53935),
+                                    modifier = Modifier.size(24.dp)
+                                )
+                            }
+                        }
+                        Spacer(modifier = Modifier.width(14.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = "الأحاديث المفضلة",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = titleColor()
+                            )
+                            Text(
+                                text = "${favoriteHadithIds.size} حديث تم تمييزه بالمفضلة",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.65f)
+                            )
+                        }
+                        Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = null, tint = GoldChampagne)
+                    }
+                }
+            }
+
+            // Categories Section Title
+            item(key = "categories_section_title") {
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(4.dp, 16.dp)
+                            .background(GoldChampagne, RoundedCornerShape(2.dp))
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = "كتب وأبواب السنة النبوية المطهرة",
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = titleColor()
+                    )
+                }
+            }
+
+            // Category Button Cards
+            items(HadithCategories, key = { it.title }) { cat ->
+                val count = SampleHadiths.count { it.category == cat.title }
+                Card(
+                    onClick = { activeCategory = cat.title },
+                    shape = RoundedCornerShape(18.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 1.5.dp),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.15f)),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Surface(
+                            shape = CircleShape,
+                            color = GoldChampagne.copy(alpha = 0.15f),
+                            modifier = Modifier.size(46.dp)
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Icon(
+                                    imageVector = cat.icon,
+                                    contentDescription = null,
+                                    tint = GoldBright,
+                                    modifier = Modifier.size(24.dp)
+                                )
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.width(14.dp))
+
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = cat.title,
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = titleColor()
+                            )
+                            Spacer(modifier = Modifier.height(2.dp))
+                            Text(
+                                text = cat.subtitle,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.65f)
+                            )
+                        }
+
+                        Surface(
+                            shape = RoundedCornerShape(6.dp),
+                            color = EmeraldLight
+                        ) {
+                            Text(
+                                text = "$count حديث",
+                                color = EmeraldDeep,
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Bold,
+                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.width(6.dp))
+
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                            contentDescription = null,
+                            tint = GoldChampagne
                         )
                     }
                 }
             }
-        }
-
-        // Hadith Cards List
-        items(filteredHadiths, key = { it.id }) { hadith ->
-            val isFav = favoriteHadithIds.contains(hadith.id)
-            HadithCard(
-                hadith = hadith,
-                isFavorite = isFav,
-                onToggleFavorite = {
-                    if (isFav) favoriteHadithIds.remove(hadith.id)
-                    else favoriteHadithIds.add(hadith.id)
-                },
-                onShare = {
-                    val shareText = "${hadith.title}\n\n${hadith.matn}\n\nرواه: ${hadith.narrator} (${hadith.source})\n\nتطبيق غِراس - غرسٌ طيب وأجرٌ دائم"
-                    val sendIntent = Intent().apply {
-                        action = Intent.ACTION_SEND
-                        putExtra(Intent.EXTRA_TEXT, shareText)
-                        type = "text/plain"
+        } else {
+            // 2. Inside Category or Active Search: Show Hadiths Cards List
+            if (displayedHadiths.isEmpty()) {
+                item(key = "empty_hadiths") {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(40.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = "لا توجد أحاديث مطابقة في هذا الباب",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                        )
                     }
-                    context.startActivity(Intent.createChooser(sendIntent, "مشاركة الحديث الشريف"))
                 }
-            )
+            } else {
+                items(displayedHadiths, key = { it.id }) { hadith ->
+                    val isFav = favoriteHadithIds.contains(hadith.id)
+                    HadithCard(
+                        hadith = hadith,
+                        isFavorite = isFav,
+                        onToggleFavorite = {
+                            if (isFav) favoriteHadithIds.remove(hadith.id)
+                            else favoriteHadithIds.add(hadith.id)
+                        },
+                        onShare = {
+                            val shareText = "${hadith.title}\n\n${hadith.matn}\n\nرواه: ${hadith.narrator} (${hadith.source})\n\nتطبيق غِراس - غرسٌ طيب وأجرٌ دائم"
+                            val sendIntent = Intent().apply {
+                                action = Intent.ACTION_SEND
+                                putExtra(Intent.EXTRA_TEXT, shareText)
+                                type = "text/plain"
+                            }
+                            context.startActivity(Intent.createChooser(sendIntent, "مشاركة الحديث الشريف"))
+                        }
+                    )
+                }
+            }
         }
     }
 }
