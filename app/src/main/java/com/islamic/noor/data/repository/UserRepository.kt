@@ -1,5 +1,6 @@
 package com.islamic.noor.data.repository
 
+import com.islamic.noor.data.local.GhirasPreferences
 import com.islamic.noor.domain.model.AppThemeMode
 import com.islamic.noor.domain.model.ReadingTheme
 import com.islamic.noor.domain.model.UserProfile
@@ -15,29 +16,45 @@ class UserRepository {
             isAdmin = false,
             name = "",
             phone = "",
-            totalTasbeeh = 340,
+            totalTasbeeh = 0,
             totalContestsJoined = 0
         )
     )
     val userProfile: StateFlow<UserProfile> = _userProfile.asStateFlow()
 
+    fun initFromPreferences() {
+        try {
+            val loaded = GhirasPreferences.loadProfile()
+            _userProfile.value = loaded
+        } catch (_: Exception) {}
+    }
+
+    private fun persist(profile: UserProfile) {
+        _userProfile.value = profile
+        try {
+            GhirasPreferences.saveProfile(profile)
+        } catch (_: Exception) {}
+    }
+
     fun loginUser(name: String, phone: String) {
-        _userProfile.value = _userProfile.value.copy(
+        val updated = _userProfile.value.copy(
             isLoggedIn = true,
             isAdmin = false,
             name = name.trim(),
             phone = phone.trim()
         )
+        persist(updated)
     }
 
     fun loginAdmin(username: String, pass: String): Boolean {
         return if (username.trim().lowercase() == "admin" && pass.trim() == "1234") {
-            _userProfile.value = _userProfile.value.copy(
+            val updated = _userProfile.value.copy(
                 isLoggedIn = true,
                 isAdmin = true,
                 name = "مدير النظام (Admin)",
                 phone = "01000000000"
             )
+            persist(updated)
             true
         } else {
             false
@@ -45,70 +62,90 @@ class UserRepository {
     }
 
     fun logout() {
-        _userProfile.value = UserProfile()
+        persist(UserProfile())
     }
 
     fun updateProfile(name: String, phone: String) {
-        _userProfile.value = _userProfile.value.copy(
+        val updated = _userProfile.value.copy(
             name = name,
             phone = phone
         )
+        persist(updated)
     }
 
     fun incrementTasbeeh() {
-        _userProfile.value = _userProfile.value.copy(
-            totalTasbeeh = _userProfile.value.totalTasbeeh + 1
-        )
+        val newTotal = _userProfile.value.totalTasbeeh + 1
+        val updated = _userProfile.value.copy(totalTasbeeh = newTotal)
+        _userProfile.value = updated
+        try {
+            GhirasPreferences.saveTotalTasbeeh(newTotal)
+        } catch (_: Exception) {}
     }
 
     fun resetTasbeeh() {
-        _userProfile.value = _userProfile.value.copy(
-            totalTasbeeh = 0
-        )
+        val updated = _userProfile.value.copy(totalTasbeeh = 0)
+        _userProfile.value = updated
+        try {
+            GhirasPreferences.saveTotalTasbeeh(0)
+        } catch (_: Exception) {}
     }
 
     fun incrementTasbeehCount() = incrementTasbeeh()
 
     fun incrementContestsJoined() {
-        _userProfile.value = _userProfile.value.copy(
+        val updated = _userProfile.value.copy(
             totalContestsJoined = _userProfile.value.totalContestsJoined + 1
         )
+        persist(updated)
     }
 
     fun updateReadingPreferences(fontSize: Float, lineHeight: Float, theme: ReadingTheme) {
-        _userProfile.value = _userProfile.value.copy(
+        val updated = _userProfile.value.copy(
             quranFontSize = fontSize,
             quranLineHeight = lineHeight,
             readingTheme = theme
         )
+        persist(updated)
     }
 
     fun setAppTheme(themeMode: AppThemeMode) {
-        _userProfile.value = _userProfile.value.copy(appTheme = themeMode)
+        val updated = _userProfile.value.copy(appTheme = themeMode)
+        persist(updated)
     }
 
     fun setAvatar(index: Int) {
-        _userProfile.value = _userProfile.value.copy(avatarIndex = index)
+        val updated = _userProfile.value.copy(avatarIndex = index)
+        persist(updated)
     }
 
     fun saveBookmark(surahId: Int, surahName: String, verseNumber: Int) {
-        _userProfile.value = _userProfile.value.copy(
+        val updated = _userProfile.value.copy(
             lastReadSurahId = surahId,
             lastReadSurahName = surahName,
             lastReadVerseNumber = verseNumber
         )
+        _userProfile.value = updated
+        try {
+            GhirasPreferences.saveBookmark(surahId, surahName, verseNumber)
+        } catch (_: Exception) {}
     }
 
     fun setAthanSoundEnabled(enabled: Boolean) {
-        _userProfile.value = _userProfile.value.copy(athanSoundEnabled = enabled)
+        val updated = _userProfile.value.copy(athanSoundEnabled = enabled)
+        persist(updated)
     }
 
     fun setIqamaDelay(minutes: Int) {
-        _userProfile.value = _userProfile.value.copy(iqamaDelayMinutes = minutes)
+        val updated = _userProfile.value.copy(iqamaDelayMinutes = minutes)
+        persist(updated)
     }
 
-    fun setGovernorate(gov: String) {
-        _userProfile.value = _userProfile.value.copy(selectedGovernorate = gov)
+    fun setGovernorate(gov: String, isAuto: Boolean = false, lat: Double? = null, lng: Double? = null) {
+        val updated = _userProfile.value.copy(selectedGovernorate = gov)
+        _userProfile.value = updated
+        try {
+            GhirasPreferences.saveGovernorate(gov, isAuto, lat, lng)
+        } catch (_: Exception) {}
     }
 
     companion object {

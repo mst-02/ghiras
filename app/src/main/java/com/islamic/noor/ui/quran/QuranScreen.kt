@@ -1,11 +1,21 @@
 package com.islamic.noor.ui.quran
 
-import android.app.Activity
+import android.Manifest
 import android.content.Intent
+import android.content.pm.PackageManager
+import android.os.Bundle
+import android.speech.RecognitionListener
 import android.speech.RecognizerIntent
+import android.speech.SpeechRecognizer
 import android.widget.Toast
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -23,6 +33,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -47,6 +58,8 @@ import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -55,13 +68,16 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.content.ContextCompat
 import com.islamic.noor.data.repository.QuranRepository
+import com.islamic.noor.data.repository.QuranVoiceMatch
 import com.islamic.noor.data.repository.UserRepository
 import com.islamic.noor.domain.model.Surah
 import com.islamic.noor.ui.theme.EmeraldDeep
@@ -84,22 +100,116 @@ fun QuranScreen(
     var searchQuery by remember { mutableStateOf("") }
     var showKhatmDuaDialog by remember { mutableStateOf(false) }
 
-    // Launcher for Voice Search (البحث الصوتي)
-    val voiceSearchLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.StartActivityForResult()
-    ) { result ->
-        if (result.resultCode == Activity.RESULT_OK) {
-            val spoken = result.data?.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS)?.firstOrNull()
-            if (!spoken.isNullOrBlank()) {
-                var clean = spoken.trim()
-                if (clean.startsWith("سورة ")) {
-                    clean = clean.removePrefix("سورة ").trim()
-                } else if (clean.startsWith("سوره ")) {
-                    clean = clean.removePrefix("سوره ").trim()
-                }
-                searchQuery = clean
-                Toast.makeText(context, "تم البحث صوتياً: $clean", Toast.LENGTH_SHORT).show()
+    val surahListState = rememberLazyListState()
+
+    // Always start at the beginning of the Quran (Al-Fatihah) when opening the screen
+    LaunchedEffect(Unit) {
+        surahListState.scrollToItem(0)
+    }
+
+    // Step-by-step back handler: Clear search or dismiss dialog before popping back
+    BackHandler(enabled = searchQuery.isNotBlank() || showKhatmDuaDialog) {
+        if (showKhatmDuaDialog) {
+            showKhatmDuaDialog = false
+        } else {
+            searchQuery = ""
+        }
+    }
+
+    // In-App Speech Recognition State
+    var isListening by remember { mutableStateOf(false) }
+    var showVoiceOverlay by remember { mutableStateOf(false) }
+    var voiceStatusMessage by remember { mutableStateOf("تفضل بالتلاوة أو نطق اسم السورة...") }
+
+    val speechRecognizer = remember {
+        if (SpeechRecognizer.isRecognitionAvailable(context)) {
+            SpeechRecognizer.createSpeechRecognizer(context)
+        } else null
+    }
+
+    DisposableEffect(Unit) {
+        onDispose {
+            try {
+                speechRecognizer?.destroy()
+            } catch (_: Exception) {}
+        }
+    }
+
+    fun startInAppVoiceListening() {
+        if (speechRecognizer == null) {
+            Toast.makeText(context, "التعرف الصوتي غير متوفر على هذا الجهاز", Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
+            putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
+            putExtra(RecognizerIntent.EXTRA_LANGUAGE, "ar-SA")
+            putExtra(RecognizerIntent.EXTRA_CALLING_PACKAGE, context.packageName)
+        }
+
+        speechRecognizer.setRecognitionListener(object : RecognitionListener {
+            override fun onReadyForSpeech(params: Bundle?) {
+                voiceStatusMessage = "تفضل بالتلاوة أو نطق اسم السورة..."
             }
+            override fun onBeginningOfSpeech() {
+                voiceStatusMessage = "جاري الاستماع لصوتك العذب..."
+            }
+            override fun onRmsChanged(rmsdB: Float) {}
+            override fun onBufferReceived(buffer: ByteArray?) {}
+            override fun onEndOfSpeech() {
+                voiceStatusMessage = "جاري التدقيق والمطابقة مع آيات القرآن الكريم..."
+            }
+            override fun onError(error: Int) {
+                isListening = false
+                showVoiceOverlay = false
+                Toast.makeText(context, "لم يتم التقاط صوت واضح، يرجى المحاولة مرة أخرى", Toast.LENGTH_SHORT).show()
+            }
+            override fun onResults(results: Bundle?) {
+                isListening = false
+                showVoiceOverlay = false
+                val matches = results?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
+                val spoken = matches?.firstOrNull()?.trim()
+
+                if (!spoken.isNullOrBlank()) {
+                    val matchResult = repository.matchVoiceQueryToQuran(spoken, context)
+                    when (matchResult) {
+                        is QuranVoiceMatch.SurahMatch -> {
+                            searchQuery = matchResult.surah.nameArabic
+                            Toast.makeText(context, "✨ تم التعرف على: سورة ${matchResult.surah.nameArabic}", Toast.LENGTH_SHORT).show()
+                        }
+                        is QuranVoiceMatch.AyahMatch -> {
+                            searchQuery = matchResult.spokenText
+                            Toast.makeText(context, "✨ تم العثور على الآية في سورة ${matchResult.verse.surahName}", Toast.LENGTH_SHORT).show()
+                        }
+                        is QuranVoiceMatch.NoMatch -> {
+                            Toast.makeText(context, "⚠️ لم يتم العثور على سورة أو آية مطابقة. يرجى نطق اسم السورة أو مقطع من الآية بدقة.", Toast.LENGTH_LONG).show()
+                        }
+                    }
+                } else {
+                    Toast.makeText(context, "لم يتم التقاط كلمات واضحة", Toast.LENGTH_SHORT).show()
+                }
+            }
+            override fun onPartialResults(partialResults: Bundle?) {}
+            override fun onEvent(eventType: Int, params: Bundle?) {}
+        })
+
+        try {
+            speechRecognizer.startListening(intent)
+            isListening = true
+            showVoiceOverlay = true
+            voiceStatusMessage = "جاري التهيئة والاستماع..."
+        } catch (_: Exception) {
+            Toast.makeText(context, "تعذر بدء التسجيل الصوتي", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    val recordAudioPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        if (isGranted) {
+            startInAppVoiceListening()
+        } else {
+            Toast.makeText(context, "يرجى منح إذن الميكروفون للبحث الصوتي في القرآن", Toast.LENGTH_SHORT).show()
         }
     }
 
@@ -120,7 +230,7 @@ fun QuranScreen(
             .background(MaterialTheme.colorScheme.background)
     ) {
         Column(modifier = Modifier.fillMaxSize()) {
-            // Search Box for Verses & Surahs with Voice Recognition
+            // Search Box for Verses & Surahs with In-App Voice Recognition
             OutlinedTextField(
                 value = searchQuery,
                 onValueChange = { searchQuery = it },
@@ -136,20 +246,15 @@ fun QuranScreen(
                             }
                         }
                         IconButton(onClick = {
-                            try {
-                                val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
-                                    putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
-                                    putExtra(RecognizerIntent.EXTRA_LANGUAGE, "ar-SA")
-                                    putExtra(RecognizerIntent.EXTRA_PROMPT, "تحدث باسم السورة (مثلاً: سورة البقرة)...")
-                                }
-                                voiceSearchLauncher.launch(intent)
-                            } catch (_: Exception) {
-                                Toast.makeText(context, "خدمة التعرف الصوتي غير متوفرة على هذا الجهاز", Toast.LENGTH_SHORT).show()
+                            if (ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) {
+                                startInAppVoiceListening()
+                            } else {
+                                recordAudioPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
                             }
                         }) {
                             Icon(
                                 imageVector = Icons.Default.Mic,
-                                contentDescription = "البحث الصوتي",
+                                contentDescription = "البحث الصوتي القرآني",
                                 tint = GoldBright
                             )
                         }
@@ -248,6 +353,7 @@ fun QuranScreen(
             } else {
                 // Surah List View
                 LazyColumn(
+                    state = surahListState,
                     contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 90.dp),
                     verticalArrangement = Arrangement.spacedBy(10.dp),
                     modifier = Modifier.fillMaxSize()
@@ -499,6 +605,104 @@ fun QuranScreen(
                     shape = RoundedCornerShape(12.dp)
                 ) {
                     Text("تمت قراءة دعاء الختم بحمد الله ✨", color = Color.White, fontWeight = FontWeight.Bold)
+                }
+            }
+        )
+    }
+
+    // In-App Quran Voice Search Listening Dialog (تسجيل وبحث صوتي مباشر داخل التطبيق)
+    if (showVoiceOverlay) {
+        val infiniteTransition = rememberInfiniteTransition(label = "voice_pulse")
+        val pulseScale by infiniteTransition.animateFloat(
+            initialValue = 0.94f,
+            targetValue = 1.14f,
+            animationSpec = infiniteRepeatable(
+                animation = tween(850),
+                repeatMode = RepeatMode.Reverse
+            ),
+            label = "pulse_scale"
+        )
+
+        AlertDialog(
+            onDismissRequest = {
+                try {
+                    speechRecognizer?.stopListening()
+                    speechRecognizer?.cancel()
+                } catch (_: Exception) {}
+                isListening = false
+                showVoiceOverlay = false
+            },
+            shape = RoundedCornerShape(24.dp),
+            containerColor = MaterialTheme.colorScheme.surface,
+            title = {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.Center,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(
+                        text = "البحث الصوتي في القرآن الكريم",
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 17.sp,
+                        color = titleColor()
+                    )
+                }
+            },
+            text = {
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 12.dp)
+                ) {
+                    Surface(
+                        shape = CircleShape,
+                        color = EmeraldDeep,
+                        border = androidx.compose.foundation.BorderStroke(2.dp, GoldBright),
+                        modifier = Modifier
+                            .size(80.dp)
+                            .scale(pulseScale)
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Icon(
+                                imageVector = Icons.Default.Mic,
+                                contentDescription = null,
+                                tint = GoldBright,
+                                modifier = Modifier.size(38.dp)
+                            )
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(18.dp))
+                    Text(
+                        text = voiceStatusMessage,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 14.sp,
+                        color = EmeraldDeep,
+                        textAlign = TextAlign.Center
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = "انطق اسم السورة (مثل: سورة الكهف)\nأو اقرأ مقطعاً صحيحاً من الآية الكريمة",
+                        fontSize = 12.sp,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.65f),
+                        textAlign = TextAlign.Center,
+                        lineHeight = 18.sp
+                    )
+                }
+            },
+            confirmButton = {
+                androidx.compose.material3.TextButton(
+                    onClick = {
+                        try {
+                            speechRecognizer?.stopListening()
+                            speechRecognizer?.cancel()
+                        } catch (_: Exception) {}
+                        isListening = false
+                        showVoiceOverlay = false
+                    }
+                ) {
+                    Text("إلغاء", color = titleColor(), fontWeight = FontWeight.Bold)
                 }
             }
         )

@@ -6,6 +6,7 @@ import com.batoulapps.adhan.Madhab
 import com.batoulapps.adhan.Prayer
 import com.batoulapps.adhan.PrayerTimes
 import com.batoulapps.adhan.data.DateComponents
+import com.islamic.noor.data.local.GhirasPreferences
 import com.islamic.noor.domain.model.PrayerTimeItem
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
@@ -70,6 +71,17 @@ class QiblaAndPrayerRepository {
         return EGYPT_GOVERNORATES.firstOrNull { it.name == name } ?: EGYPT_GOVERNORATES[1]
     }
 
+    fun getEffectiveCoordinates(govName: String): Coordinates {
+        if (govName.contains("GPS") || govName.contains("تلقائي")) {
+            val saved = try { GhirasPreferences.getSavedCoordinates() } catch (_: Exception) { null }
+            if (saved != null) {
+                return Coordinates(saved.first, saved.second)
+            }
+        }
+        val gov = getGovernorate(govName)
+        return Coordinates(gov.lat, gov.lng)
+    }
+
     /**
      * حساب زاوية القبلة من أي إحداثيات (خط العرض وخط الطول) محلياً بدون إنترنت
      * إحداثيات الكعبة المشرفة: 21.4225 N, 39.8262 E
@@ -96,8 +108,7 @@ class QiblaAndPrayerRepository {
      * طبقاً لمعايير الهيئة المصرية العامة للمساحة (Egyptian General Authority of Survey)
      */
     fun getPrayerTimesForToday(govName: String = "القاهرة", iqamaDelay: Int = 15): Flow<List<PrayerTimeItem>> = flow {
-        val gov = getGovernorate(govName)
-        val coordinates = Coordinates(gov.lat, gov.lng)
+        val coordinates = getEffectiveCoordinates(govName)
         val now = Date()
         val dateComponents = DateComponents.from(now)
         val params = CalculationMethod.EGYPTIAN.parameters.apply {
@@ -131,8 +142,7 @@ class QiblaAndPrayerRepository {
      * حساب وتحديد الصلاة القادمة الحقيقية لحظياً والوقت المتبقي لها بالثواني
      */
     fun getNextPrayerLiveInfo(govName: String = "القاهرة"): NextPrayerLiveInfo {
-        val gov = getGovernorate(govName)
-        val coordinates = Coordinates(gov.lat, gov.lng)
+        val coordinates = getEffectiveCoordinates(govName)
         val now = Date()
         val dateComponents = DateComponents.from(now)
         val params = CalculationMethod.EGYPTIAN.parameters.apply {

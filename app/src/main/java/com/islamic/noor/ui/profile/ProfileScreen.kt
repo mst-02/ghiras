@@ -1,8 +1,15 @@
 package com.islamic.noor.ui.profile
 
+import android.Manifest
+import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
+import android.location.LocationManager
 import android.net.Uri
 import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.content.ContextCompat
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.runtime.rememberCoroutineScope
 import com.islamic.noor.util.AppReleaseInfo
@@ -141,6 +148,40 @@ fun ProfileScreen(
     // Dialog state for info
     var activeDialogTitle by remember { mutableStateOf<String?>(null) }
     var activeDialogContent by remember { mutableStateOf<String?>(null) }
+
+    fun fetchAndSaveGpsLocation() {
+        try {
+            val lm = context.getSystemService(Context.LOCATION_SERVICE) as? LocationManager
+            val loc = if (ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED ||
+                ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
+                lm?.getLastKnownLocation(LocationManager.GPS_PROVIDER)
+                    ?: lm?.getLastKnownLocation(LocationManager.NETWORK_PROVIDER)
+            } else null
+
+            val lat = loc?.latitude ?: 30.0444
+            val lng = loc?.longitude ?: 31.2357
+            userRepository.setGovernorate("تحديد تلقائي عبر الموقع (GPS)", isAuto = true, lat = lat, lng = lng)
+            Toast.makeText(context, "تم تفعيل التحديد التلقائي وحفظ الموقع بنجاح 📍", Toast.LENGTH_SHORT).show()
+        } catch (_: Exception) {
+            userRepository.setGovernorate("تحديد تلقائي عبر الموقع (GPS)", isAuto = true, lat = 30.0444, lng = 31.2357)
+            Toast.makeText(context, "تم حفظ وضع التحديد التلقائي 📍", Toast.LENGTH_SHORT).show()
+        }
+        showGovernorateMenu = false
+    }
+
+    val locationPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestMultiplePermissions()
+    ) { permissions ->
+        val fineGranted = permissions[Manifest.permission.ACCESS_FINE_LOCATION] == true
+        val coarseGranted = permissions[Manifest.permission.ACCESS_COARSE_LOCATION] == true
+        if (fineGranted || coarseGranted) {
+            fetchAndSaveGpsLocation()
+        } else {
+            userRepository.setGovernorate("تحديد تلقائي عبر الموقع (GPS)", isAuto = true, lat = 30.0444, lng = 31.2357)
+            Toast.makeText(context, "تم تفعيل التحديد التلقائي (افتراضي) 📍", Toast.LENGTH_SHORT).show()
+            showGovernorateMenu = false
+        }
+    }
 
     val currentAvatarIcon = IslamicAvatarIcons.getOrElse(userProfile.avatarIndex) { IslamicAvatarIcons[0] }
 
@@ -727,8 +768,15 @@ fun ProfileScreen(
                                 .fillMaxWidth()
                                 .clip(RoundedCornerShape(12.dp))
                                 .clickable {
-                                    userRepository.setGovernorate("تحديد تلقائي عبر الموقع (GPS)")
-                                    showGovernorateMenu = false
+                                    val fineGranted = ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED
+                                    val coarseGranted = ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED
+                                    if (fineGranted || coarseGranted) {
+                                        fetchAndSaveGpsLocation()
+                                    } else {
+                                        locationPermissionLauncher.launch(
+                                            arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION)
+                                        )
+                                    }
                                 }
                         ) {
                             Row(
@@ -779,7 +827,9 @@ fun ProfileScreen(
                                 .fillMaxWidth()
                                 .clip(RoundedCornerShape(10.dp))
                                 .clickable {
-                                    userRepository.setGovernorate(gov.name)
+                                    val govLoc = prayerRepository.getGovernorate(gov.name)
+                                    userRepository.setGovernorate(gov.name, isAuto = false, lat = govLoc.lat, lng = govLoc.lng)
+                                    Toast.makeText(context, "تم حفظ المحافظة: ${gov.name} بنجاح ✨", Toast.LENGTH_SHORT).show()
                                     showGovernorateMenu = false
                                 }
                         ) {

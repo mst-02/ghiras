@@ -19,6 +19,12 @@ data class VerseSearchResult(
     val tafseerShort: String
 )
 
+sealed class QuranVoiceMatch {
+    data class SurahMatch(val surah: Surah) : QuranVoiceMatch()
+    data class AyahMatch(val verse: VerseSearchResult, val spokenText: String) : QuranVoiceMatch()
+    object NoMatch : QuranVoiceMatch()
+}
+
 class QuranRepository(private val context: Context? = null) {
 
     fun getAllSurahs(): Flow<List<Surah>> = flow {
@@ -71,6 +77,57 @@ class QuranRepository(private val context: Context? = null) {
         emit(results)
     }.flowOn(Dispatchers.IO)
 
+    fun matchVoiceQueryToQuran(spoken: String, context: Context): QuranVoiceMatch {
+        val text = spoken.trim()
+        if (text.isBlank()) return QuranVoiceMatch.NoMatch
+
+        // 1. Check Surah names
+        var cleanSurahName = text
+        if (cleanSurahName.startsWith("سورة ")) {
+            cleanSurahName = cleanSurahName.removePrefix("سورة ").trim()
+        } else if (cleanSurahName.startsWith("سوره ")) {
+            cleanSurahName = cleanSurahName.removePrefix("سوره ").trim()
+        }
+        val normalizedSpoken = cleanArabic(cleanSurahName)
+
+        for (s in SURAH_LIST) {
+            val sNorm = cleanArabic(s.nameArabic)
+            if (sNorm == normalizedSpoken ||
+                sNorm == normalizedSpoken.removePrefix("ال") ||
+                normalizedSpoken == sNorm.removePrefix("ال") ||
+                s.nameArabic.equals(cleanSurahName, ignoreCase = true)
+            ) {
+                return QuranVoiceMatch.SurahMatch(s)
+            }
+        }
+
+        // 2. Check Quran Verses
+        val cleanSearch = cleanArabic(text)
+        if (cleanSearch.length >= 3) {
+            val targetContext = context.applicationContext
+            for (surah in SURAH_LIST) {
+                val verses = loadVersesFromAssets(targetContext, surah.id)
+                for (verse in verses) {
+                    val cleanVerse = cleanArabic(verse.textUthmani)
+                    if (cleanVerse.contains(cleanSearch)) {
+                        return QuranVoiceMatch.AyahMatch(
+                            VerseSearchResult(
+                                surahId = surah.id,
+                                surahName = surah.nameArabic,
+                                verseNumber = verse.verseNumber,
+                                textUthmani = verse.textUthmani,
+                                tafseerShort = verse.tafseerShort
+                            ),
+                            spokenText = text
+                        )
+                    }
+                }
+            }
+        }
+
+        return QuranVoiceMatch.NoMatch
+    }
+
     companion object {
         private var appContext: Context? = null
         private val surahCache = mutableMapOf<Int, List<Verse>>()
@@ -85,8 +142,13 @@ class QuranRepository(private val context: Context? = null) {
                 .replace("أ", "ا")
                 .replace("إ", "ا")
                 .replace("آ", "ا")
+                .replace("ٱ", "ا")
                 .replace("ة", "ه")
                 .replace("ى", "ي")
+                .replace("ؤ", "ء")
+                .replace("ئ", "ء")
+                .replace("ـ", "")
+                .trim()
         }
 
         private fun loadVersesFromAssets(ctx: Context, surahId: Int): List<Verse> {

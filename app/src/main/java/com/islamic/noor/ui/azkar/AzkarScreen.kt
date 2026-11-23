@@ -2,6 +2,7 @@ package com.islamic.noor.ui.azkar
 
 import android.content.Context
 import android.os.Build
+import androidx.activity.compose.BackHandler
 import android.os.VibrationEffect
 import android.os.Vibrator
 import android.os.VibratorManager
@@ -103,6 +104,11 @@ fun AzkarScreen(
     var activeCategory by remember { mutableStateOf<String?>(null) }
     val customCategories by repository.customCategories.collectAsState()
     val favoriteIds by repository.favoriteIds.collectAsState()
+
+    // Intercept back button when inside an Azkar category to return to the categories list first
+    BackHandler(enabled = activeCategory != null) {
+        activeCategory = null
+    }
 
     var showCreateCategoryDialog by remember { mutableStateOf(false) }
     var newCategoryName by remember { mutableStateOf("") }
