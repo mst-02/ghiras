@@ -8,9 +8,14 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -36,6 +41,9 @@ import com.islamic.noor.ui.quran.QuranScreen
 import com.islamic.noor.ui.quran.SurahDetailScreen
 import com.islamic.noor.ui.tasbeeh.TasbeehScreen
 import com.islamic.noor.ui.theme.NoorTheme
+import com.islamic.noor.util.AppReleaseInfo
+import com.islamic.noor.util.AppUpdateManager
+import com.islamic.noor.util.GhirasUpdateDialog
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -56,9 +64,33 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 fun MainApp() {
+    val context = LocalContext.current
     val navController = rememberNavController()
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
+
+    // In-App Auto-Update Checker State
+    var availableUpdate by remember { mutableStateOf<AppReleaseInfo?>(null) }
+
+    LaunchedEffect(Unit) {
+        try {
+            val pInfo = context.packageManager.getPackageInfo(context.packageName, 0)
+            val currentVersion = pInfo.versionName ?: "1.3.0"
+            val update = AppUpdateManager.checkLatestRelease(currentVersion)
+            if (update != null) {
+                availableUpdate = update
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+    }
+
+    if (availableUpdate != null) {
+        GhirasUpdateDialog(
+            releaseInfo = availableUpdate!!,
+            onDismiss = { availableUpdate = null }
+        )
+    }
 
     val screenTitle = when {
         currentRoute == Screen.Home.route -> "غِراس"

@@ -2,7 +2,13 @@ package com.islamic.noor.ui.profile
 
 import android.content.Intent
 import android.net.Uri
+import android.widget.Toast
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.runtime.rememberCoroutineScope
+import com.islamic.noor.util.AppReleaseInfo
+import com.islamic.noor.util.AppUpdateManager
+import com.islamic.noor.util.GhirasUpdateDialog
+import kotlinx.coroutines.launch
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -126,6 +132,10 @@ fun ProfileScreen(
     var showAvatarDialog by remember { mutableStateOf(false) }
     var showGovernorateMenu by remember { mutableStateOf(false) }
     var showUpdateSuccessDialog by remember { mutableStateOf(false) }
+
+    val coroutineScope = rememberCoroutineScope()
+    var manualUpdateInfo by remember { mutableStateOf<AppReleaseInfo?>(null) }
+    var isCheckingUpdate by remember { mutableStateOf(false) }
 
     // Dialog state for info
     var activeDialogTitle by remember { mutableStateOf<String?>(null) }
@@ -762,15 +772,28 @@ fun ProfileScreen(
                         // زر التحديث التلقائي المطلوب داخل "من نحن"
                         Surface(
                             shape = RoundedCornerShape(10.dp),
-                            color = EmeraldDeep,
+                            color = if (isCheckingUpdate) EmeraldMedium else EmeraldDeep,
                             modifier = Modifier
                                 .clip(RoundedCornerShape(10.dp))
-                                .clickable {
-                                    val browserIntent = Intent(
-                                        Intent.ACTION_VIEW,
-                                        Uri.parse("https://github.com/mst-02/ghiras/releases/latest")
-                                    )
-                                    context.startActivity(browserIntent)
+                                .clickable(enabled = !isCheckingUpdate) {
+                                    isCheckingUpdate = true
+                                    coroutineScope.launch {
+                                        try {
+                                            val pInfo = context.packageManager.getPackageInfo(context.packageName, 0)
+                                            val currentVer = pInfo.versionName ?: "1.3.0"
+                                            val update = AppUpdateManager.checkLatestRelease(currentVer)
+                                            isCheckingUpdate = false
+                                            if (update != null) {
+                                                activeDialogTitle = null
+                                                manualUpdateInfo = update
+                                            } else {
+                                                Toast.makeText(context, "أنت بالفعل على أحدث إصدار من غِراس (v$currentVer) ✨", Toast.LENGTH_LONG).show()
+                                            }
+                                        } catch (e: Exception) {
+                                            isCheckingUpdate = false
+                                            Toast.makeText(context, "تعذر فحص التحديثات، تحقق من الاتصال بالإنترنت", Toast.LENGTH_SHORT).show()
+                                        }
+                                    }
                                 }
                         ) {
                             Row(
@@ -785,7 +808,7 @@ fun ProfileScreen(
                                 )
                                 Spacer(modifier = Modifier.width(6.dp))
                                 Text(
-                                    text = "تحديث التطبيق",
+                                    text = if (isCheckingUpdate) "جاري الفحص..." else "تحديث التطبيق",
                                     color = Color.White,
                                     fontSize = 12.sp,
                                     fontWeight = FontWeight.Bold
@@ -807,6 +830,13 @@ fun ProfileScreen(
                     }
                 }
             }
+        )
+    }
+
+    if (manualUpdateInfo != null) {
+        GhirasUpdateDialog(
+            releaseInfo = manualUpdateInfo!!,
+            onDismiss = { manualUpdateInfo = null }
         )
     }
 }
