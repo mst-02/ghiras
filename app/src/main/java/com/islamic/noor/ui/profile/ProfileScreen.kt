@@ -324,7 +324,7 @@ fun ProfileScreen(
         item(key = "stats_row") {
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
             ) {
                 Card(
                     shape = RoundedCornerShape(16.dp),
@@ -333,10 +333,10 @@ fun ProfileScreen(
                     modifier = Modifier.weight(1f)
                 ) {
                     Column(
-                        modifier = Modifier.padding(14.dp),
+                        modifier = Modifier.padding(12.dp),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-                        Icon(Icons.Default.FormatListNumbered, contentDescription = null, tint = GoldDark, modifier = Modifier.size(24.dp))
+                        Icon(Icons.Default.FormatListNumbered, contentDescription = null, tint = GoldDark, modifier = Modifier.size(22.dp))
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
                             text = "${userProfile.totalTasbeeh}",
@@ -359,10 +359,36 @@ fun ProfileScreen(
                     modifier = Modifier.weight(1f)
                 ) {
                     Column(
-                        modifier = Modifier.padding(14.dp),
+                        modifier = Modifier.padding(12.dp),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-                        Icon(Icons.Default.EmojiEvents, contentDescription = null, tint = GoldDark, modifier = Modifier.size(24.dp))
+                        Icon(Icons.AutoMirrored.Filled.MenuBook, contentDescription = null, tint = GoldDark, modifier = Modifier.size(22.dp))
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = "${userProfile.totalKhatmahs}",
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.Bold,
+                            color = titleColor()
+                        )
+                        Text(
+                            text = "ختمة مكتملة",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.65f)
+                        )
+                    }
+                }
+
+                Card(
+                    shape = RoundedCornerShape(16.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Column(
+                        modifier = Modifier.padding(12.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Icon(Icons.Default.EmojiEvents, contentDescription = null, tint = GoldDark, modifier = Modifier.size(22.dp))
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
                             text = "${userProfile.totalContestsJoined}",
@@ -371,7 +397,7 @@ fun ProfileScreen(
                             color = titleColor()
                         )
                         Text(
-                            text = "مشاركات في المسابقة",
+                            text = "المسابقات",
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.55f)
                         )
@@ -743,6 +769,8 @@ fun ProfileScreen(
     if (showGovernorateMenu) {
         AlertDialog(
             onDismissRequest = { showGovernorateMenu = false },
+            properties = androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false),
+            modifier = Modifier.fillMaxWidth(0.92f),
             title = {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(Icons.Default.LocationOn, contentDescription = null, tint = GoldChampagne)

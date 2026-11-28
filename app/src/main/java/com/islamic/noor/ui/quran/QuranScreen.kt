@@ -100,11 +100,13 @@ fun QuranScreen(
     var searchQuery by remember { mutableStateOf("") }
     var showKhatmDuaDialog by remember { mutableStateOf(false) }
 
-    val surahListState = rememberLazyListState()
+    val surahListState = rememberLazyListState(initialFirstVisibleItemIndex = 0)
 
-    // Always start at the beginning of the Quran (Al-Fatihah) when opening the screen
-    LaunchedEffect(Unit) {
-        surahListState.scrollToItem(0)
+    // Always start at the beginning of the Quran (Al-Fatihah) when opening the screen or when surahs are ready
+    LaunchedEffect(surahs.size) {
+        if (surahs.isNotEmpty()) {
+            surahListState.scrollToItem(0)
+        }
     }
 
     // Step-by-step back handler: Clear search or dismiss dialog before popping back

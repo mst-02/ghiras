@@ -37,6 +37,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
@@ -152,7 +153,7 @@ fun SurahDetailScreen(
 
     var fontSize by remember { mutableFloatStateOf(24f) }
     var lineSpacingMultiplier by remember { mutableFloatStateOf(1.8f) }
-    var showDisplayControls by remember { mutableStateOf(false) }
+    var showDisplayControls by remember { mutableStateOf(true) }
 
     val bgColor = MaterialTheme.colorScheme.background
     val textColor = MaterialTheme.colorScheme.onBackground
@@ -183,13 +184,13 @@ fun SurahDetailScreen(
                 title = {
                     Column {
                         Text(
-                            text = "سورة ${surah?.nameArabic ?: ""}",
+                            text = "المصحف الشريف",
                             fontWeight = FontWeight.Bold,
                             color = Color.White,
-                            fontSize = 18.sp
+                            fontSize = 17.sp
                         )
                         Text(
-                            text = "${surah?.revelationType ?: ""} • ${surah?.versesCount ?: 0} آيات • ص ${surah?.pageNumber ?: 1}",
+                            text = "سورة ${surah?.nameArabic ?: ""} • ${surah?.revelationType ?: ""} • ${surah?.versesCount ?: 0} آيات • ص ${surah?.pageNumber ?: 1}",
                             style = MaterialTheme.typography.labelSmall,
                             color = GoldChampagne
                         )
@@ -216,7 +217,7 @@ fun SurahDetailScreen(
                 actions = {
                     IconButton(onClick = { showDisplayControls = !showDisplayControls }) {
                         Icon(
-                            imageVector = Icons.Default.Palette,
+                            imageVector = Icons.Default.Menu,
                             contentDescription = "خيارات القراءة والعرض",
                             tint = if (showDisplayControls) GoldBright else Color.White
                         )
@@ -238,6 +239,25 @@ fun SurahDetailScreen(
                             .padding(16.dp),
                         verticalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
+                        // هيدر البانل مع زر الإغلاق X
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(Icons.Default.Menu, contentDescription = null, tint = GoldDark, modifier = Modifier.size(18.dp))
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text("خيارات القراءة والعرض", fontWeight = FontWeight.Bold, fontSize = 13.sp, color = titleColor())
+                            }
+                            IconButton(
+                                onClick = { showDisplayControls = false },
+                                modifier = Modifier.size(28.dp)
+                            ) {
+                                Icon(Icons.Default.Close, contentDescription = "إغلاق", tint = titleColor(), modifier = Modifier.size(18.dp))
+                            }
+                        }
+
                         // نمط القراءة: آيات وتفسير vs قراءة متصلة (مصحف)
                         Row(
                             modifier = Modifier.fillMaxWidth(),
@@ -306,43 +326,37 @@ fun SurahDetailScreen(
 
             // Main Content Area
             if (scrollModeIndex == 1) {
-                // تقليب الصفحات يمين وشمال بنمط المصحف الشريف وثلاثي الأبعاد (3D Page Flip)
-                val pagesMap: Map<Int, List<Verse>> = remember(verses) {
-                    if (verses.isEmpty()) emptyMap()
-                    else verses.groupBy { it.page }
-                }
-                val pageList: List<List<Verse>> = remember(pagesMap) { pagesMap.values.toList() }
-                val totalPages = pageList.size.coerceAtLeast(1)
-                val pagerState = rememberPagerState(pageCount = { totalPages })
+                // تقليب الصفحات يمين وشمال بنمط المصحف الشريف وثلاثي الأبعاد (3D Page Flip عبر 604 صفحات)
+                val initialPage = remember(surah) { ((surah?.pageNumber ?: 1) - 1).coerceIn(0, 603) }
+                val pagerState = rememberPagerState(initialPage = initialPage, pageCount = { 604 })
 
                 Column(
                     modifier = Modifier
                         .fillMaxSize()
-                        .padding(horizontal = 12.dp, vertical = 6.dp)
+                        .padding(horizontal = 10.dp, vertical = 4.dp)
                 ) {
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(horizontal = 6.dp, vertical = 4.dp),
+                            .padding(horizontal = 8.dp, vertical = 4.dp),
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            text = "اسحب يميناً ويساراً لتقليب صفحات المصحف",
+                            text = "اسحب يميناً ويساراً لتقليب صفحات المصحف الشريف",
                             fontSize = 11.sp,
                             color = GoldChampagne,
                             fontWeight = FontWeight.Bold
                         )
-                        val currPageNum = pageList.getOrNull(pagerState.currentPage)?.firstOrNull()?.page ?: (pagerState.currentPage + 1)
                         Text(
-                            text = "صفحة $currPageNum من 604",
+                            text = "صفحة ${pagerState.currentPage + 1} من 604",
                             fontSize = 11.sp,
                             color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
                             fontWeight = FontWeight.SemiBold
                         )
                     }
 
-                    Spacer(modifier = Modifier.height(4.dp))
+                    Spacer(modifier = Modifier.height(2.dp))
 
                     HorizontalPager(
                         state = pagerState,
@@ -351,8 +365,29 @@ fun SurahDetailScreen(
                             .weight(1f)
                     ) { pageIndex ->
                         val pageOffset = ((pagerState.currentPage - pageIndex) + pagerState.currentPageOffsetFraction)
-                        val pageVerses = pageList.getOrElse(pageIndex) { emptyList() }
-                        val currPage = pageVerses.firstOrNull()?.page ?: (pageIndex + 1)
+                        val currPageNum = pageIndex + 1
+                        val rawPageVerses = remember(currPageNum) {
+                            repository.getVersesForPage(currPageNum)
+                        }
+
+                        // تحويل آيات الصفحة لنموذج العرض
+                        val pageVerses = remember(rawPageVerses) {
+                            if (rawPageVerses.isNotEmpty()) {
+                                rawPageVerses.map { pv ->
+                                    Verse(
+                                        id = pv.verseNumber,
+                                        verseNumber = pv.verseNumber,
+                                        textUthmani = pv.textUthmani,
+                                        tafseerShort = "بيان وتدبر الآية الكريمة في الصفحة $currPageNum.",
+                                        page = currPageNum
+                                    )
+                                }
+                            } else {
+                                verses.filter { it.page == currPageNum }
+                            }
+                        }
+
+                        val firstSurahName = rawPageVerses.firstOrNull()?.surahArabic ?: surah?.nameArabic ?: ""
 
                         Box(
                             modifier = Modifier
@@ -367,51 +402,60 @@ fun SurahDetailScreen(
                                         androidx.compose.ui.graphics.TransformOrigin(1f, 0.5f)
                                     }
                                 }
-                                .padding(horizontal = 2.dp, vertical = 4.dp)
+                                .padding(horizontal = 2.dp, vertical = 2.dp)
                         ) {
                             Card(
                                 shape = RoundedCornerShape(20.dp),
                                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                                 elevation = CardDefaults.cardElevation(defaultElevation = 3.dp),
-                                border = BorderStroke(1.2.dp, GoldChampagne.copy(alpha = 0.4f)),
+                                border = BorderStroke(1.2.dp, GoldChampagne.copy(alpha = 0.45f)),
                                 modifier = Modifier.fillMaxSize()
                             ) {
                                 Column(
                                     modifier = Modifier
                                         .fillMaxSize()
-                                        .padding(14.dp)
+                                        .padding(horizontal = 14.dp, vertical = 10.dp)
                                         .verticalScroll(rememberScrollState()),
                                     horizontalAlignment = Alignment.CenterHorizontally
                                 ) {
-                                    // Page Top Header
+                                    // ترويسة الصفحة بالأعلى
                                     Row(
                                         modifier = Modifier
                                             .fillMaxWidth()
-                                            .padding(bottom = 8.dp),
+                                            .padding(bottom = 6.dp),
                                         horizontalArrangement = Arrangement.SpaceBetween,
                                         verticalAlignment = Alignment.CenterVertically
                                     ) {
                                         Text(
-                                            text = "سورة ${surah?.nameArabic ?: ""}",
+                                            text = "سورة $firstSurahName",
                                             fontSize = 11.sp,
                                             fontWeight = FontWeight.Bold,
                                             color = GoldDark
                                         )
                                         Text(
-                                            text = "صفحة $currPage",
+                                            text = "صفحة $currPageNum",
                                             fontSize = 11.sp,
                                             fontWeight = FontWeight.Bold,
                                             color = GoldDark
                                         )
                                     }
 
-                                    if (pageIndex == 0 && currentSurahId != 9 && currentSurahId != 1) {
-                                        BasmalahBanner()
-                                        Spacer(modifier = Modifier.height(10.dp))
+                                    // فواصل السور الجديدة داخل الصفحة
+                                    val newSurahsOnPage = rawPageVerses.filter { it.isFirstVerseOfSurah }
+                                    if (newSurahsOnPage.isNotEmpty()) {
+                                        for (ns in newSurahsOnPage) {
+                                            LuxurySurahHeader(surahName = ns.surahArabic)
+                                            if (ns.surahId != 9 && ns.surahId != 1) {
+                                                BasmalahBanner()
+                                                Spacer(modifier = Modifier.height(8.dp))
+                                            }
+                                        }
+                                    } else if (currPageNum == 1) {
+                                        LuxurySurahHeader(surahName = "الفاتحة")
                                     }
 
                                     if (displayModeIndex == 1) {
-                                        // قراءة متصلة في نفس السطر بدون مسافات فارغة
+                                        // قراءة متصلة بدون مسافات فارغة
                                         ContinuousMushafFlow(
                                             verses = pageVerses,
                                             bookmarkedVerseNumber = if (userProfile.lastReadSurahId == currentSurahId) userProfile.lastReadVerseNumber else null,
@@ -422,7 +466,7 @@ fun SurahDetailScreen(
                                             onVerseClick = { onVerseTapped(it) }
                                         )
                                     } else {
-                                        // آيات وتفسير داخل الصفحة
+                                        // نمط الآيات والتفسير داخل الصفحة
                                         for (verse in pageVerses) {
                                             val isBookmarked = userProfile.lastReadSurahId == currentSurahId && userProfile.lastReadVerseNumber == verse.verseNumber
                                             val isSelected = selectedVerseNum == verse.verseNumber
@@ -435,9 +479,20 @@ fun SurahDetailScreen(
                                                 textColor = textColor,
                                                 onVerseClick = { onVerseTapped(verse.verseNumber) }
                                             )
-                                            Spacer(modifier = Modifier.height(8.dp))
+                                            Spacer(modifier = Modifier.height(6.dp))
                                         }
                                     }
+
+                                    Spacer(modifier = Modifier.height(14.dp))
+
+                                    // رقم الصفحة في المنتصف تماماً أسفل الصفحة كما بالمصحف الشريف
+                                    Text(
+                                        text = "— $currPageNum —",
+                                        fontSize = 12.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = GoldDark
+                                    )
+                                    Spacer(modifier = Modifier.height(4.dp))
                                 }
                             }
                         }
@@ -1090,6 +1145,38 @@ private fun BasmalahBanner() {
                 color = titleColor(),
                 fontSize = 22.sp
             )
+        }
+    }
+}
+
+@Composable
+private fun LuxurySurahHeader(surahName: String) {
+    Surface(
+        shape = RoundedCornerShape(12.dp),
+        color = EmeraldDeep,
+        border = BorderStroke(1.2.dp, GoldBright),
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 8.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 10.dp, horizontal = 16.dp),
+            horizontalArrangement = Arrangement.Center,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text("۞", color = GoldBright, fontSize = 16.sp)
+            Spacer(modifier = Modifier.width(10.dp))
+            Text(
+                text = "سورة $surahName",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = GoldChampagne,
+                fontSize = 17.sp
+            )
+            Spacer(modifier = Modifier.width(10.dp))
+            Text("۞", color = GoldBright, fontSize = 16.sp)
         }
     }
 }

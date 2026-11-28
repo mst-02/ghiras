@@ -124,7 +124,7 @@ class UserRepository {
             lastReadSurahName = surahName,
             lastReadVerseNumber = verseNumber
         )
-        _userProfile.value = updated
+        persist(updated)
         try {
             GhirasPreferences.saveBookmark(surahId, surahName, verseNumber)
         } catch (_: Exception) {}
@@ -142,10 +142,40 @@ class UserRepository {
 
     fun setGovernorate(gov: String, isAuto: Boolean = false, lat: Double? = null, lng: Double? = null) {
         val updated = _userProfile.value.copy(selectedGovernorate = gov)
-        _userProfile.value = updated
+        persist(updated)
         try {
             GhirasPreferences.saveGovernorate(gov, isAuto, lat, lng)
         } catch (_: Exception) {}
+    }
+
+    fun setDailyWird(title: String, surahId: Int) {
+        val updated = _userProfile.value.copy(
+            dailyWirdTitle = title,
+            dailyWirdSurahId = surahId,
+            isDailyWirdDone = false
+        )
+        persist(updated)
+    }
+
+    fun toggleDailyWirdDone() {
+        val updated = _userProfile.value.copy(
+            isDailyWirdDone = !_userProfile.value.isDailyWirdDone
+        )
+        persist(updated)
+    }
+
+    fun updateCurrentJuz(juz: Int) {
+        val safeJuz = juz.coerceIn(1, 30)
+        val updated = _userProfile.value.copy(currentJuz = safeJuz)
+        persist(updated)
+    }
+
+    fun incrementKhatmah() {
+        val updated = _userProfile.value.copy(
+            totalKhatmahs = _userProfile.value.totalKhatmahs + 1,
+            currentJuz = 1
+        )
+        persist(updated)
     }
 
     companion object {

@@ -2,6 +2,7 @@ package com.islamic.noor.ui.hadith
 
 import android.content.Intent
 import androidx.activity.compose.BackHandler
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -261,12 +262,22 @@ object HadithFavoritesManager {
 
 @Composable
 fun HadithScreen(
-    onBack: () -> Unit = {}
+    onBack: () -> Unit = {},
+    onSubCategoryChange: (String?, (() -> Unit)?) -> Unit = { _, _ -> }
 ) {
     val context = LocalContext.current
     var searchQuery by remember { mutableStateOf("") }
     var activeCategory by remember { mutableStateOf<String?>(null) }
     var favUpdateTrigger by remember { mutableIntStateOf(0) }
+
+    // Notify top bar and handle sub-navigation
+    LaunchedEffect(activeCategory) {
+        if (activeCategory != null) {
+            onSubCategoryChange(activeCategory) { activeCategory = null }
+        } else {
+            onSubCategoryChange(null, null)
+        }
+    }
 
     // Intercept back button when inside a category to return to Hadith categories list
     BackHandler(enabled = activeCategory != null) {

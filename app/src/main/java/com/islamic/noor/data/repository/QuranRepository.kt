@@ -19,6 +19,16 @@ data class VerseSearchResult(
     val tafseerShort: String
 )
 
+data class PageVerseItem(
+    val surahId: Int,
+    val surahName: String,
+    val surahArabic: String,
+    val verseNumber: Int,
+    val textUthmani: String,
+    val isFirstVerseOfSurah: Boolean,
+    val pageNumber: Int
+)
+
 sealed class QuranVoiceMatch {
     data class SurahMatch(val surah: Surah) : QuranVoiceMatch()
     data class AyahMatch(val verse: VerseSearchResult, val spokenText: String) : QuranVoiceMatch()
@@ -41,13 +51,20 @@ class QuranRepository(private val context: Context? = null) {
         emit(verses)
     }.flowOn(Dispatchers.IO)
 
-    // بحث دقيق وشامل في نصوص كافة آيات القرآن الكريم
+    fun getVersesForPage(pageNumber: Int): List<PageVerseItem> {
+        val targetContext = context ?: appContext ?: return emptyList()
+        return loadVersesForPageFromAssets(targetContext, pageNumber)
+    }
+
+    // بحث دقيق وشامل في نصوص كافة آيات القرآن الكريم مع تطبيع الرسم العثماني
     fun searchVerses(query: String): Flow<List<VerseSearchResult>> = flow {
         if (query.isBlank()) {
             emit(emptyList())
             return@flow
         }
         val cleanQuery = query.trim()
+        val normQuery = normalizeUthmani(cleanQuery)
+        val skeletonQuery = normQuery.replace("ا", "")
         val results = mutableListOf<VerseSearchResult>()
         val targetContext = context ?: appContext
 
@@ -56,8 +73,9 @@ class QuranRepository(private val context: Context? = null) {
             for (surah in allSurahs) {
                 val verses = loadVersesFromAssets(targetContext, surah.id)
                 for (verse in verses) {
-                    if (verse.textUthmani.contains(cleanQuery, ignoreCase = true) ||
-                        cleanArabic(verse.textUthmani).contains(cleanArabic(cleanQuery))
+                    val normVerse = normalizeUthmani(verse.textUthmani)
+                    if (normVerse.contains(normQuery) ||
+                        (skeletonQuery.length >= 3 && normVerse.replace("ا", "").contains(skeletonQuery))
                     ) {
                         results.add(
                             VerseSearchResult(
@@ -88,10 +106,10 @@ class QuranRepository(private val context: Context? = null) {
         } else if (cleanSurahName.startsWith("سوره ")) {
             cleanSurahName = cleanSurahName.removePrefix("سوره ").trim()
         }
-        val normalizedSpoken = cleanArabic(cleanSurahName)
+        val normalizedSpoken = normalizeUthmani(cleanSurahName)
 
         for (s in SURAH_LIST) {
-            val sNorm = cleanArabic(s.nameArabic)
+            val sNorm = normalizeUthmani(s.nameArabic)
             if (sNorm == normalizedSpoken ||
                 sNorm == normalizedSpoken.removePrefix("ال") ||
                 normalizedSpoken == sNorm.removePrefix("ال") ||
@@ -101,15 +119,18 @@ class QuranRepository(private val context: Context? = null) {
             }
         }
 
-        // 2. Check Quran Verses
-        val cleanSearch = cleanArabic(text)
+        // 2. Check Quran Verses with Deep Uthmani Normalization
+        val cleanSearch = normalizeUthmani(text)
+        val skeletonSearch = cleanSearch.replace("ا", "")
         if (cleanSearch.length >= 3) {
             val targetContext = context.applicationContext
             for (surah in SURAH_LIST) {
                 val verses = loadVersesFromAssets(targetContext, surah.id)
                 for (verse in verses) {
-                    val cleanVerse = cleanArabic(verse.textUthmani)
-                    if (cleanVerse.contains(cleanSearch)) {
+                    val normVerse = normalizeUthmani(verse.textUthmani)
+                    if (normVerse.contains(cleanSearch) ||
+                        (skeletonSearch.length >= 4 && normVerse.replace("ا", "").contains(skeletonSearch))
+                    ) {
                         return QuranVoiceMatch.AyahMatch(
                             VerseSearchResult(
                                 surahId = surah.id,
@@ -131,25 +152,112 @@ class QuranRepository(private val context: Context? = null) {
     companion object {
         private var appContext: Context? = null
         private val surahCache = mutableMapOf<Int, List<Verse>>()
+        private val pageCache = mutableMapOf<Int, List<PageVerseItem>>()
         private var rawJsonString: String? = null
 
         fun initialize(context: Context) {
             appContext = context.applicationContext
         }
 
-        private fun cleanArabic(text: String): String {
-            return text.replace(Regex("[\u064B-\u065F\u0670\u06D6-\u06ED]"), "")
-                .replace("أ", "ا")
+        fun loadVersesForPageFromAssets(ctx: Context, pageNumber: Int): List<PageVerseItem> {
+            synchronized(pageCache) {
+                if (pageCache.containsKey(pageNumber)) {
+                    return pageCache[pageNumber] ?: emptyList()
+                }
+            }
+
+            try {
+                if (rawJsonString == null) {
+                    val stream: InputStream = ctx.assets.open("quran_uthmani.json")
+                    rawJsonString = stream.bufferedReader().use { it.readText() }
+                }
+
+                val json = JSONObject(rawJsonString!!)
+                val dataObj = json.getJSONObject("data")
+                val surahsArray = dataObj.getJSONArray("surahs")
+                val basmalahPattern = "بِسْمِ ٱللَّهِ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ"
+                val tempMap = mutableMapOf<Int, MutableList<PageVerseItem>>()
+
+                for (s in 0 until surahsArray.length()) {
+                    val surahObj = surahsArray.getJSONObject(s)
+                    val sNum = surahObj.getInt("number")
+                    val sName = surahObj.getString("name")
+                    val ayahsArray = surahObj.getJSONArray("ayahs")
+
+                    for (a in 0 until ayahsArray.length()) {
+                        val ayahObj = ayahsArray.getJSONObject(a)
+                        val numInSurah = ayahObj.getInt("numberInSurah")
+                        var text = ayahObj.getString("text").replace("\uFEFF", "").trim()
+                        val page = ayahObj.optInt("page", 1)
+
+                        if (sNum != 1 && sNum != 9 && numInSurah == 1) {
+                            if (text.startsWith(basmalahPattern)) {
+                                text = text.removePrefix(basmalahPattern).trim()
+                            }
+                        }
+
+                        val list = tempMap.getOrPut(page) { mutableListOf() }
+                        list.add(
+                            PageVerseItem(
+                                surahId = sNum,
+                                surahName = sName,
+                                surahArabic = sName,
+                                verseNumber = numInSurah,
+                                textUthmani = text,
+                                isFirstVerseOfSurah = numInSurah == 1,
+                                pageNumber = page
+                            )
+                        )
+                    }
+                }
+
+                synchronized(pageCache) {
+                    pageCache.putAll(tempMap)
+                    return pageCache[pageNumber] ?: emptyList()
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+            return emptyList()
+        }
+
+        /**
+         * تطبيع ذكي وعميق للرسم العثماني
+         * يحول الألف الخنجرية (\u0670) لألف حقيقية (مثل السمٰوٰت -> السماوات)
+         * ويطابق الصلاة (الصلوٰة) والزكاة والرحمن وإبراهيم وإسماعيل وجميع الحروف
+         */
+        fun normalizeUthmani(text: String): String {
+            var s = text
+            // Replace Dagger Alif (\u0670) with normal Alif
+            s = s.replace("\u0670", "ا")
+            // Small Waw and Small Yaa
+            s = s.replace("\u06E5", "و")
+            s = s.replace("\u06E6", "ي")
+            // Alif over Waw in words like الصلوة / الزكوة / الحيوة
+            s = s.replace("و\u0670", "ا")
+            s = s.replace("وا۟", "ا")
+            // Strip Tashkeel & Stop Marks
+            s = s.replace(Regex("[\u064B-\u065F\u06D6-\u06ED]"), "")
+            // Normalize Alefs
+            s = s.replace("أ", "ا")
                 .replace("إ", "ا")
                 .replace("آ", "ا")
                 .replace("ٱ", "ا")
-                .replace("ة", "ه")
-                .replace("ى", "ي")
-                .replace("ؤ", "ء")
+            // Normalize Taa Marbuta
+            s = s.replace("ة", "ه")
+            // Normalize Yaa
+            s = s.replace("ى", "ي")
+            // Normalize Hamzas
+            s = s.replace("ؤ", "ء")
                 .replace("ئ", "ء")
-                .replace("ـ", "")
-                .trim()
+            // Remove Tatweel
+            s = s.replace("ـ", "")
+            // Collapse repeated Alifs
+            s = s.replace("اا", "ا")
+            return s.trim()
         }
+
+        private fun cleanArabic(text: String): String = normalizeUthmani(text)
 
         private fun loadVersesFromAssets(ctx: Context, surahId: Int): List<Verse> {
             synchronized(surahCache) {

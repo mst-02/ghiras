@@ -1,6 +1,9 @@
 package com.islamic.noor.ui.charity
 
+import android.net.Uri
 import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -23,6 +26,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.AttachFile
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Mosque
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.VolunteerActivism
@@ -86,7 +91,17 @@ fun GoodDeedsScreen(
     var donorPhone by remember { mutableStateOf("") }
     var donationAmount by remember { mutableStateOf("100") }
     var destinationNote by remember { mutableStateOf("") }
+    var receiptImageUri by remember { mutableStateOf<Uri?>(null) }
     var showSuccessDialog by remember { mutableStateOf(false) }
+
+    val photoPickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri: Uri? ->
+        receiptImageUri = uri
+        if (uri != null) {
+            Toast.makeText(context, "تم إرفاق صورة إيصال التحويل بنجاح ✓", Toast.LENGTH_SHORT).show()
+        }
+    }
 
     LazyColumn(
         modifier = Modifier
@@ -261,6 +276,48 @@ fun GoodDeedsScreen(
                         modifier = Modifier.fillMaxWidth()
                     )
 
+                    // Mandatory Receipt Upload Button
+                    Surface(
+                        shape = RoundedCornerShape(12.dp),
+                        color = if (receiptImageUri != null) Color(0xFF2E7D32).copy(alpha = 0.15f) else GoldChampagne.copy(alpha = 0.15f),
+                        border = BorderStroke(1.2.dp, if (receiptImageUri != null) Color(0xFF2E7D32) else GoldBright),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(12.dp))
+                            .clickable { photoPickerLauncher.launch("image/*") }
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(12.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(
+                                    imageVector = if (receiptImageUri != null) Icons.Default.CheckCircle else Icons.Default.AttachFile,
+                                    contentDescription = null,
+                                    tint = if (receiptImageUri != null) Color(0xFF2E7D32) else GoldDark,
+                                    modifier = Modifier.size(22.dp)
+                                )
+                                Spacer(modifier = Modifier.width(10.dp))
+                                Column {
+                                    Text(
+                                        text = if (receiptImageUri != null) "تم إرفاق صورة الإيصال بنجاح ✓" else "أرفق صورة التحويل أو الإيصال (إلزامي)",
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 12.sp,
+                                        color = if (receiptImageUri != null) Color(0xFF2E7D32) else titleColor()
+                                    )
+                                    Text(
+                                        text = if (receiptImageUri != null) "اضغط لتغيير الصورة إن رغبت" else "اضغط هنا لاختيار صورة إيصال التحويل من المعرض",
+                                        fontSize = 10.sp,
+                                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.65f)
+                                    )
+                                }
+                            }
+                        }
+                    }
+
                     Text(
                         text = "ملاحظة: يتم تحديث أسهم المساهمة في التطبيق فور مطابقة التحويل المالي لضمان الأمانة والشفافية.",
                         fontSize = 10.sp,
@@ -272,11 +329,16 @@ fun GoodDeedsScreen(
             confirmButton = {
                 Button(
                     onClick = {
-                        val amount = donationAmount.toIntOrNull() ?: 100
-                        val shares = (amount / 100).coerceAtLeast(1)
-                        repository.pledgeShare(proj.id, shares)
-                        selectedProjectForDonation = null
-                        showSuccessDialog = true
+                        if (receiptImageUri == null) {
+                            Toast.makeText(context, "يرجى إرفاق صورة إيصال التحويل لإتمام المساهمة ⚠️", Toast.LENGTH_LONG).show()
+                        } else {
+                            val amount = donationAmount.toIntOrNull() ?: 100
+                            val shares = (amount / 100).coerceAtLeast(1)
+                            repository.pledgeShare(proj.id, shares)
+                            selectedProjectForDonation = null
+                            receiptImageUri = null
+                            showSuccessDialog = true
+                        }
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = EmeraldDeep)
                 ) {
@@ -284,7 +346,10 @@ fun GoodDeedsScreen(
                 }
             },
             dismissButton = {
-                TextButton(onClick = { selectedProjectForDonation = null }) {
+                TextButton(onClick = {
+                    selectedProjectForDonation = null
+                    receiptImageUri = null
+                }) {
                     Text("إلغاء", color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f))
                 }
             }

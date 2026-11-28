@@ -173,19 +173,6 @@ fun GroupKhatmahScreen(
                                 )
                             }
                         }
-
-                        Surface(
-                            shape = RoundedCornerShape(8.dp),
-                            color = EmeraldLight
-                        ) {
-                            Text(
-                                text = "ختمة نشطة",
-                                color = EmeraldDeep,
-                                fontSize = 11.sp,
-                                fontWeight = FontWeight.Bold,
-                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
-                            )
-                        }
                     }
 
                     Spacer(modifier = Modifier.height(14.dp))

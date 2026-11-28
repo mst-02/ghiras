@@ -3,6 +3,7 @@ package com.islamic.noor.ui.azkar
 import android.content.Context
 import android.os.Build
 import androidx.activity.compose.BackHandler
+import androidx.compose.runtime.LaunchedEffect
 import android.os.VibrationEffect
 import android.os.Vibrator
 import android.os.VibratorManager
@@ -98,12 +99,22 @@ data class StandardCategory(
 @Composable
 fun AzkarScreen(
     modifier: Modifier = Modifier,
+    onSubCategoryChange: (String?, (() -> Unit)?) -> Unit = { _, _ -> },
     repository: AzkarRepository = remember { AzkarRepository.instance }
 ) {
     val context = LocalContext.current
     var activeCategory by remember { mutableStateOf<String?>(null) }
     val customCategories by repository.customCategories.collectAsState()
     val favoriteIds by repository.favoriteIds.collectAsState()
+
+    // Notify top bar and handle sub-navigation
+    LaunchedEffect(activeCategory) {
+        if (activeCategory != null) {
+            onSubCategoryChange(activeCategory) { activeCategory = null }
+        } else {
+            onSubCategoryChange(null, null)
+        }
+    }
 
     // Intercept back button when inside an Azkar category to return to the categories list first
     BackHandler(enabled = activeCategory != null) {
@@ -477,28 +488,19 @@ private fun AzkarDetailView(
                 .padding(innerPadding)
                 .background(MaterialTheme.colorScheme.background)
         ) {
-            // Header Row
+            // Header Row (بدون سهم رجوع مكرر؛ الرجوع موحد في الشريط العلوي للتطبيق)
             item(key = "category_header") {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        IconButton(onClick = onBack) {
-                            Icon(
-                                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                                contentDescription = "رجوع للأقسام",
-                                tint = titleColor()
-                            )
-                        }
-                        Text(
-                            text = categoryName,
-                            style = MaterialTheme.typography.titleLarge,
-                            fontWeight = FontWeight.Bold,
-                            color = titleColor()
-                        )
-                    }
+                    Text(
+                        text = categoryName,
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold,
+                        color = titleColor()
+                    )
 
                     // Reset button
                     IconButton(onClick = { countsMap.clear() }) {

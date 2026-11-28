@@ -35,6 +35,12 @@ object GhirasPreferences {
     private const val KEY_LAST_READ_SURAH_NAME = "last_read_surah_name"
     private const val KEY_LAST_READ_VERSE = "last_read_verse_number"
 
+    private const val KEY_DAILY_WIRD_TITLE = "daily_wird_title"
+    private const val KEY_DAILY_WIRD_SURAH_ID = "daily_wird_surah_id"
+    private const val KEY_IS_DAILY_WIRD_DONE = "is_daily_wird_done"
+    private const val KEY_TOTAL_KHATMAHS = "total_khatmahs"
+    private const val KEY_CURRENT_JUZ = "current_juz"
+
     private const val KEY_TOTAL_TASBEEH = "total_tasbeeh"
     private const val KEY_ATHAN_SOUND = "athan_sound_enabled"
     private const val KEY_IQAMA_DELAY = "iqama_delay_minutes"
@@ -60,7 +66,7 @@ object GhirasPreferences {
                 putString(KEY_SAVED_LAT, lat.toString())
                 putString(KEY_SAVED_LNG, lng.toString())
             }
-            apply()
+            commit()
         }
     }
 
@@ -117,7 +123,12 @@ object GhirasPreferences {
             putInt(KEY_LAST_READ_SURAH_ID, profile.lastReadSurahId)
             putString(KEY_LAST_READ_SURAH_NAME, profile.lastReadSurahName)
             putInt(KEY_LAST_READ_VERSE, profile.lastReadVerseNumber)
-            apply()
+            putString(KEY_DAILY_WIRD_TITLE, profile.dailyWirdTitle)
+            putInt(KEY_DAILY_WIRD_SURAH_ID, profile.dailyWirdSurahId)
+            putBoolean(KEY_IS_DAILY_WIRD_DONE, profile.isDailyWirdDone)
+            putInt(KEY_TOTAL_KHATMAHS, profile.totalKhatmahs)
+            putInt(KEY_CURRENT_JUZ, profile.currentJuz)
+            commit()
         }
     }
 
@@ -156,7 +167,12 @@ object GhirasPreferences {
             avatarIndex = p.getInt(KEY_AVATAR_INDEX, 0),
             lastReadSurahId = p.getInt(KEY_LAST_READ_SURAH_ID, 1),
             lastReadSurahName = p.getString(KEY_LAST_READ_SURAH_NAME, "الفاتحة") ?: "الفاتحة",
-            lastReadVerseNumber = p.getInt(KEY_LAST_READ_VERSE, 1)
+            lastReadVerseNumber = p.getInt(KEY_LAST_READ_VERSE, 1),
+            dailyWirdTitle = p.getString(KEY_DAILY_WIRD_TITLE, "سورة البقرة (الصفحات ١-٤)") ?: "سورة البقرة (الصفحات ١-٤)",
+            dailyWirdSurahId = p.getInt(KEY_DAILY_WIRD_SURAH_ID, 2),
+            isDailyWirdDone = p.getBoolean(KEY_IS_DAILY_WIRD_DONE, false),
+            totalKhatmahs = p.getInt(KEY_TOTAL_KHATMAHS, 1),
+            currentJuz = p.getInt(KEY_CURRENT_JUZ, 1)
         )
     }
 }

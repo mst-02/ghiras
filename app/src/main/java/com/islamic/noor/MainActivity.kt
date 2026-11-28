@@ -2,6 +2,7 @@ package com.islamic.noor
 
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.fillMaxSize
@@ -94,6 +95,21 @@ fun MainApp() {
         )
     }
 
+    var subCategoryTitle by remember { mutableStateOf<String?>(null) }
+    var subCategoryBackAction by remember { mutableStateOf<(() -> Unit)?>(null) }
+
+    LaunchedEffect(currentRoute) {
+        subCategoryTitle = null
+        subCategoryBackAction = null
+    }
+
+    // Intercept hardware/system back button when inside a subcategory
+    BackHandler(enabled = subCategoryBackAction != null) {
+        subCategoryBackAction?.invoke()
+        subCategoryBackAction = null
+        subCategoryTitle = null
+    }
+
     val screenTitle = when {
         currentRoute == Screen.Home.route -> "غِراس"
         currentRoute == Screen.Contest.route -> "مسابقة الأسبوع"
@@ -120,11 +136,13 @@ fun MainApp() {
         topBar = {
             if (currentRoute?.startsWith("surah_detail") != true) {
                 AppTopBar(
-                    title = screenTitle,
-                    onBackClick = if (!isRootScreen) {
+                    title = subCategoryTitle ?: screenTitle,
+                    onBackClick = if (!isRootScreen || subCategoryBackAction != null) {
                         {
-                            if (backDispatcher != null && backDispatcher.hasEnabledCallbacks()) {
-                                backDispatcher.onBackPressed()
+                            if (subCategoryBackAction != null) {
+                                subCategoryBackAction?.invoke()
+                                subCategoryBackAction = null
+                                subCategoryTitle = null
                             } else {
                                 navController.popBackStack()
                             }
@@ -194,7 +212,12 @@ fun MainApp() {
             }
 
             composable(Screen.Azkar.route) {
-                AzkarScreen()
+                AzkarScreen(
+                    onSubCategoryChange = { title, backAction ->
+                        subCategoryTitle = title
+                        subCategoryBackAction = backAction
+                    }
+                )
             }
 
             composable(Screen.Qibla.route) {
@@ -207,13 +230,21 @@ fun MainApp() {
 
             composable(Screen.Duas.route) {
                 DuasScreen(
-                    onBack = { navController.popBackStack() }
+                    onBack = { navController.popBackStack() },
+                    onSubCategoryChange = { title, backAction ->
+                        subCategoryTitle = title
+                        subCategoryBackAction = backAction
+                    }
                 )
             }
 
             composable(Screen.Hadith.route) {
                 HadithScreen(
-                    onBack = { navController.popBackStack() }
+                    onBack = { navController.popBackStack() },
+                    onSubCategoryChange = { title, backAction ->
+                        subCategoryTitle = title
+                        subCategoryBackAction = backAction
+                    }
                 )
             }
 

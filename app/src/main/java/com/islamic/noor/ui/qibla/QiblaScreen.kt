@@ -90,15 +90,15 @@ fun QiblaScreen(
     val userProfile by userRepository.userProfile.collectAsState()
     var showGovDropdown by remember { mutableStateOf(false) }
 
-    val selectedGov = remember(userProfile.selectedGovernorate) {
-        repository.getGovernorate(userProfile.selectedGovernorate)
+    val effectiveCoords = remember(userProfile.selectedGovernorate) {
+        repository.getEffectiveCoordinates(userProfile.selectedGovernorate)
     }
 
-    val qiblaAngle = remember(selectedGov) {
-        repository.calculateQiblaAngle(selectedGov.lat, selectedGov.lng)
+    val qiblaAngle = remember(effectiveCoords) {
+        repository.calculateQiblaAngle(effectiveCoords.latitude, effectiveCoords.longitude)
     }
 
-    val prayerTimes by repository.getPrayerTimesForToday(selectedGov.name, userProfile.iqamaDelayMinutes).collectAsState(initial = emptyList())
+    val prayerTimes by repository.getPrayerTimesForToday(userProfile.selectedGovernorate, userProfile.iqamaDelayMinutes).collectAsState(initial = emptyList())
 
     var azimuth by remember { mutableFloatStateOf(0f) }
 

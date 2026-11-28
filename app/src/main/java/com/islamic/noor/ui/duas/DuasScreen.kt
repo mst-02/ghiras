@@ -2,6 +2,7 @@ package com.islamic.noor.ui.duas
 
 import android.content.Intent
 import androidx.activity.compose.BackHandler
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -201,11 +202,21 @@ val MainDuaCategories = listOf(
 
 @Composable
 fun DuasScreen(
-    onBack: () -> Unit = {}
+    onBack: () -> Unit = {},
+    onSubCategoryChange: (String?, (() -> Unit)?) -> Unit = { _, _ -> }
 ) {
     val context = LocalContext.current
     var activeCategory by remember { mutableStateOf<String?>(null) }
     val favoriteDuaIds = remember { mutableStateListOf<Int>() }
+
+    // Notify top bar and handle sub-navigation
+    LaunchedEffect(activeCategory) {
+        if (activeCategory != null) {
+            onSubCategoryChange(activeCategory) { activeCategory = null }
+        } else {
+            onSubCategoryChange(null, null)
+        }
+    }
 
     // Intercept back button when inside a category to return to categories list
     BackHandler(enabled = activeCategory != null) {

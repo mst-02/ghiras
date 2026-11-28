@@ -86,11 +86,14 @@ import java.util.Calendar
 fun HomeScreen(
     onNavigate: (String) -> Unit,
     modifier: Modifier = Modifier,
-    ghirasRepository: GhirasRepository = remember { GhirasRepository.instance }
+    ghirasRepository: GhirasRepository = remember { GhirasRepository.instance },
+    userRepository: UserRepository = remember { UserRepository.instance }
 ) {
+    val userProfile by userRepository.userProfile.collectAsState()
     var isDuaRead by remember { mutableStateOf(false) }
     var isVerseFlipped by remember { mutableStateOf(false) }
     var isHadithFlipped by remember { mutableStateOf(false) }
+    var showWirdConfigDialog by remember { mutableStateOf(false) }
     var showVerseStoryDialog by remember { mutableStateOf(false) }
 
     val verseRotation by animateFloatAsState(
@@ -112,15 +115,175 @@ fun HomeScreen(
         contentPadding = PaddingValues(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        // 1. دعاء اليوم في الأول تماماً (بدون زر "اضغط للقراءة" المشتت، ومع علامة تمت القراءة أسفل اليسار)
+        // 1. كارت "اذهب لوردك اليومي" في أعلى الصفحة الرئيسية
+        item(key = "daily_wird_card") {
+            Card(
+                shape = RoundedCornerShape(22.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                elevation = CardDefaults.cardElevation(defaultElevation = 3.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .border(1.5.dp, GoldBright.copy(alpha = 0.6f), RoundedCornerShape(22.dp))
+            ) {
+                Column(modifier = Modifier.padding(18.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Surface(
+                                shape = CircleShape,
+                                color = EmeraldDeep,
+                                modifier = Modifier.size(38.dp)
+                            ) {
+                                Box(contentAlignment = Alignment.Center) {
+                                    Icon(
+                                        imageVector = Icons.Default.Mosque,
+                                        contentDescription = null,
+                                        tint = GoldBright,
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                }
+                            }
+                            Spacer(modifier = Modifier.width(10.dp))
+                            Column {
+                                Text(
+                                    text = "وردك اليومي المبارك",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    color = titleColor()
+                                )
+                                Text(
+                                    text = userProfile.dailyWirdTitle.ifBlank { "لم تحدد ورداً بعد — اضغط للتحديد" },
+                                    fontSize = 11.sp,
+                                    color = GoldDark,
+                                    fontWeight = FontWeight.SemiBold
+                                )
+                            }
+                        }
+
+                        // زر تعديل الورد
+                        Surface(
+                            shape = CircleShape,
+                            color = GoldChampagne.copy(alpha = 0.2f),
+                            modifier = Modifier
+                                .size(34.dp)
+                                .clickable { showWirdConfigDialog = true }
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Icon(
+                                    imageVector = Icons.Default.AutoAwesome,
+                                    contentDescription = "تعديل الورد",
+                                    tint = GoldBright,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(14.dp))
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        // زر اذهب لوردك اليومي
+                        Button(
+                            onClick = {
+                                if (userProfile.dailyWirdTitle.isBlank()) {
+                                    showWirdConfigDialog = true
+                                } else {
+                                    val sId = userProfile.dailyWirdSurahId.coerceAtLeast(1)
+                                    onNavigate("surah_detail/$sId")
+                                }
+                            },
+                            colors = ButtonDefaults.buttonColors(containerColor = EmeraldDeep),
+                            shape = RoundedCornerShape(14.dp),
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.Center
+                            ) {
+                                Text("اذهب لوردك اليومي", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = null, tint = GoldBright, modifier = Modifier.size(16.dp))
+                            }
+                        }
+
+                        // زر تبديل تم الإنجاز
+                        Surface(
+                            shape = RoundedCornerShape(14.dp),
+                            color = if (userProfile.isDailyWirdDone) EmeraldLight else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f),
+                            border = androidx.compose.foundation.BorderStroke(1.dp, if (userProfile.isDailyWirdDone) Color(0xFF2E7D32) else GoldChampagne.copy(alpha = 0.4f)),
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(14.dp))
+                                .clickable { userRepository.toggleDailyWirdDone() }
+                                .padding(horizontal = 12.dp, vertical = 10.dp)
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(
+                                    imageVector = Icons.Default.CheckCircle,
+                                    contentDescription = null,
+                                    tint = if (userProfile.isDailyWirdDone) Color(0xFF2E7D32) else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f),
+                                    modifier = Modifier.size(18.dp)
+                                )
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text(
+                                    text = if (userProfile.isDailyWirdDone) "تم الإنجاز ✨" else "إتمام",
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = if (userProfile.isDailyWirdDone) Color(0xFF2E7D32) else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // 2. مواعيد الصلاة مع عداد تنازلي حي بالثواني
+        item(key = "prayer_card") {
+            PrayerTimelineCard(onQiblaClick = { onNavigate(Screen.Qibla.route) })
+        }
+
+        // 3. أبواب الخير والخدمات الرئيسية
+        item(key = "services_title") {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(4.dp, 16.dp)
+                        .background(GoldChampagne, RoundedCornerShape(2.dp))
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = "الأقسام والخدمات الإسلامية",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = titleColor()
+                )
+            }
+        }
+
+        // 4. الأقسام الثمانية
+        item(key = "services_grid") {
+            ServicesGrid(onNavigate = onNavigate)
+        }
+
+        // 5. دعاء اليوم المبارك (نزل تحت فوق آية وتدبر بالضبط كما طلب المستخدم)
         item(key = "daily_dua") {
             Card(
                 shape = RoundedCornerShape(22.dp),
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                elevation = CardDefaults.cardElevation(defaultElevation = 2.5.dp),
+                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
                 modifier = Modifier
                     .fillMaxWidth()
-                    .border(1.5.dp, GoldChampagne.copy(alpha = 0.5f), RoundedCornerShape(22.dp))
+                    .border(1.2.dp, GoldChampagne.copy(alpha = 0.5f), RoundedCornerShape(22.dp))
                     .clickable { isDuaRead = !isDuaRead }
             ) {
                 Column(modifier = Modifier.padding(18.dp)) {
@@ -196,37 +359,6 @@ fun HomeScreen(
                     }
                 }
             }
-        }
-
-        // 2. مواعيد الصلاة مع عداد تنازلي حي بالثواني
-        item(key = "prayer_card") {
-            PrayerTimelineCard(onQiblaClick = { onNavigate(Screen.Qibla.route) })
-        }
-
-        // 3. أبواب الخير والخدمات الرئيسية
-        item(key = "services_title") {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Box(
-                    modifier = Modifier
-                        .size(4.dp, 16.dp)
-                        .background(GoldChampagne, RoundedCornerShape(2.dp))
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(
-                    text = "الأقسام والخدمات الإسلامية",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = titleColor()
-                )
-            }
-        }
-
-        // 4. الأقسام الثمانية
-        item(key = "services_grid") {
-            ServicesGrid(onNavigate = onNavigate)
         }
 
         // 5. آية وتدبر مع حركة تقليب ثلاثية الأبعاد 3D Flip
@@ -454,6 +586,95 @@ fun HomeScreen(
                     colors = ButtonDefaults.buttonColors(containerColor = EmeraldDeep)
                 ) {
                     Text("إغلاق", color = Color.White)
+                }
+            }
+        )
+    }
+
+    // نافذة تحديد وتخصيص الورد اليومي
+    if (showWirdConfigDialog) {
+        val wirdPresets = listOf(
+            Triple("سورة البقرة (الصفحات ١-٤)", 2, "تلاوة وحفظ بدايات سورة البقرة"),
+            Triple("سورة الكهف كاملة", 18, "نور ما بين الجمعتين وبركة الأسبوع"),
+            Triple("سورة يس والواقعة", 36, "قلب القرآن وجلب الرزق والسكينة"),
+            Triple("سورة الملك (المنجية من عذاب القبر)", 67, "قراءة يومية قبل النوم للحفظ والشفاعة"),
+            Triple("جزء عمّ (الجزء ٣٠)", 78, "قصار السور والتدبر السريع"),
+            Triple("أذكار الصباح والمساء والاستغفار", 1, "تحصين النفس بالأوراد النبوية المباركة")
+        )
+
+        AlertDialog(
+            onDismissRequest = { showWirdConfigDialog = false },
+            shape = RoundedCornerShape(22.dp),
+            containerColor = MaterialTheme.colorScheme.surface,
+            title = {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Default.Mosque, contentDescription = null, tint = GoldBright, modifier = Modifier.size(24.dp))
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = "تحديد وردك اليومي المبارك",
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 17.sp,
+                        color = titleColor()
+                    )
+                }
+            },
+            text = {
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    Text(
+                        text = "اختر وردك اليومي ليظهر في واجهتك وتصل إليه بضغطة زر واحدة كل يوم:",
+                        fontSize = 12.sp,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
+                        lineHeight = 18.sp
+                    )
+
+                    wirdPresets.forEach { (title, surahId, desc) ->
+                        val isSelected = userProfile.dailyWirdTitle == title
+                        Surface(
+                            shape = RoundedCornerShape(12.dp),
+                            color = if (isSelected) EmeraldLight else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                            border = androidx.compose.foundation.BorderStroke(1.dp, if (isSelected) GoldBright else Color.Transparent),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(12.dp))
+                                .clickable {
+                                    userRepository.setDailyWird(title, surahId)
+                                    showWirdConfigDialog = false
+                                }
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 14.dp, vertical = 10.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        text = title,
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 13.sp,
+                                        color = if (isSelected) EmeraldDeep else MaterialTheme.colorScheme.onSurface
+                                    )
+                                    Text(
+                                        text = desc,
+                                        fontSize = 10.sp,
+                                        color = if (isSelected) EmeraldDeep.copy(alpha = 0.8f) else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.55f)
+                                    )
+                                }
+                                if (isSelected) {
+                                    Icon(Icons.Default.CheckCircle, contentDescription = null, tint = EmeraldDeep, modifier = Modifier.size(18.dp))
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showWirdConfigDialog = false }) {
+                    Text("إغلاق", color = titleColor(), fontWeight = FontWeight.Bold)
                 }
             }
         )

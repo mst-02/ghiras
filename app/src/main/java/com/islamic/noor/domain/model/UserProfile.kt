@@ -21,7 +21,12 @@ data class UserProfile(
     val avatarIndex: Int = 0,
     val lastReadSurahId: Int = 1,
     val lastReadSurahName: String = "الفاتحة",
-    val lastReadVerseNumber: Int = 1
+    val lastReadVerseNumber: Int = 1,
+    val dailyWirdTitle: String = "سورة البقرة (الصفحات ١-٤)",
+    val dailyWirdSurahId: Int = 2,
+    val isDailyWirdDone: Boolean = false,
+    val totalKhatmahs: Int = 1,
+    val currentJuz: Int = 1
 )
 
 enum class AppThemeMode {
